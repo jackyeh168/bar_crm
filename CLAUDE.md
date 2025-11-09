@@ -27,15 +27,22 @@ All documentation is in the `/docs` directory:
 
 - **docs/README.md** - Documentation navigation hub
 - **docs/product/PRD.md** - Complete product requirements (465 lines)
-- **docs/architecture/DDD_GUIDE.md** - Complete DDD implementation guide
+- **docs/architecture/ddd/** - Domain-Driven Design guide (split into 13 chapters)
+  - See `docs/architecture/ddd/README.md` for chapter navigation
 - **docs/operations/DEPLOYMENT.md** - Deployment and DevOps guide
 - **docs/qa/** - Testing strategies and conventions
 
 ### Reading Order for New Team Members
 1. docs/README.md - Overview
 2. docs/product/PRD.md - Understand business requirements
-3. docs/architecture/DDD_GUIDE.md - Learn the architecture
+3. docs/architecture/ddd/README.md - DDD architecture overview (then read specific chapters as needed)
 4. docs/operations/DEPLOYMENT.md - Deployment knowledge
+
+### Key DDD Chapters to Read First
+- **01-design-overview.md** - Design goals and domain classification
+- **02-strategic-design.md** - Domain events, commands, and business rules
+- **03-bounded-contexts.md** - All 7 bounded contexts (comprehensive)
+- **05-tactical-design.md** - Core domain tactical patterns
 
 ## Planned Architecture
 
@@ -404,7 +411,11 @@ Admin can configure promotional rates (e.g., 50 TWD = 1 point)
 ## Related Documentation
 
 For implementation details, always refer to:
-- **Architecture**: `docs/architecture/DDD_GUIDE.md`
+- **DDD Architecture**: `docs/architecture/ddd/README.md` (see individual chapters for specific topics)
+  - Strategic Design: `docs/architecture/ddd/02-strategic-design.md`
+  - Bounded Contexts: `docs/architecture/ddd/03-bounded-contexts.md`
+  - Use Cases: `docs/architecture/ddd/10-use-case-definitions.md`
+  - Dependency Rules: `docs/architecture/ddd/12-dependency-rules.md`
 - **Product Requirements**: `docs/product/PRD.md`
 - **Testing Standards**: `docs/qa/testing-conventions.md`
 - **Deployment**: `docs/operations/DEPLOYMENT.md`
