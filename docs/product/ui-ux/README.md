@@ -12,12 +12,14 @@ docs/product/ui-ux/
 ├── linebot-conversation-flows.md      # 💬 LINE Bot 對話流程設計
 ├── admin-portal-design.md             # 🖥️  管理後台介面設計
 ├── survey-page-design.md              # 📋 問卷頁面設計
+├── audit-log-design.md                # 🔍 稽核日誌系統設計
 └── wireframes/                         # 🎨 線框圖與設計資源
     ├── README.md                       #    線框圖說明
     ├── registration-flow.png           #    註冊流程示意圖
     ├── qr-scanning-flow.png            #    QR Code 掃描流程
     ├── admin-dashboard.png             #    管理後台儀表板
-    └── survey-form.png                 #    問卷表單設計
+    ├── survey-form.png                 #    問卷表單設計
+    └── audit-log-list.png              #    稽核日誌列表頁
 ```
 
 ---
@@ -72,6 +74,7 @@ docs/product/ui-ux/
 | 問卷管理 | 問卷列表、問卷編輯、統計 | [管理後台設計](./admin-portal-design.md#問卷管理) |
 | 積分規則 | 規則列表、規則設定 | [管理後台設計](./admin-portal-design.md#積分規則管理) |
 | iChef 匯入 | 檔案上傳、匯入歷史 | [管理後台設計](./admin-portal-design.md#ichef-匯入) |
+| 稽核日誌 | 日誌列表、詳情、匯出、異常監控 | [稽核日誌設計](./audit-log-design.md) |
 
 ---
 
@@ -215,6 +218,7 @@ xxl: ≥ 1600px (超大螢幕)
 ├── 📋 問卷管理 (Surveys)
 ├── 🎯 積分規則 (Points Rules)
 ├── 📥 iChef 匯入 (iChef Import)
+├── 🔍 稽核日誌 (Audit Logs)
 └── ⚙️  系統設定 (Settings)
 ```
 
@@ -264,6 +268,7 @@ xxl: ≥ 1600px (超大螢幕)
 - [US-004: 問卷系統](../stories/US-004-survey-system.md)
 - [US-005: iChef 整合](../stories/US-005-ichef-integration.md)
 - [US-006: 管理後台](../stories/US-006-admin-portal.md)
+- [US-007: 稽核日誌系統](../stories/US-007-audit-log-system.md)
 
 ### **技術文件**
 - [PRD.md](../PRD.md) - 產品需求文件
@@ -302,18 +307,22 @@ xxl: ≥ 1600px (超大螢幕)
 - [ ] 線框圖已審查並通過
 - [ ] 視覺設計規範已確認
 - [ ] 互動原型已測試
+- [ ] 稽核日誌介面設計已完成
 
 ### **開發中檢查**
 - [ ] 元件實作符合設計規範
 - [ ] 響應式佈局正確
 - [ ] 色彩對比度符合標準
 - [ ] 字體大小可讀
+- [ ] 敏感資料遮罩正確顯示
 
 ### **上線前檢查**
 - [ ] 所有使用者流程已測試
 - [ ] 錯誤狀態顯示正確
 - [ ] 載入狀態顯示正確
 - [ ] 多裝置相容性測試通過
+- [ ] 稽核日誌匯出功能測試通過
+- [ ] GDPR 資料刪除流程測試通過
 
 ---
 
