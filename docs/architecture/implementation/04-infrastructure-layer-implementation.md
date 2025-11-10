@@ -73,13 +73,14 @@ func (r *GormPointsAccountRepository) Update(
     db := r.extractDB(ctx)
     model := r.toModel(account)
 
-    // 樂觀鎖：使用聚合當前的版本號（已由聚合自己遞增）
-    // WHERE 條件檢查舊版本號（version - 1），確保並發控制
-    oldVersion := account.GetVersion() - 1
+    // 樂觀鎖：使用聚合提供的上一個版本號
+    // 聚合已經遞增版本號，GetPreviousVersion() 返回遞增前的版本號
+    // 這避免了 Repository 需要知道 "version - 1" 的邏輯（職責封裝）
+    previousVersion := account.GetPreviousVersion()
 
-    // 樂觀鎖更新（WHERE version = oldVersion 確保並發控制）
+    // 樂觀鎖更新（WHERE version = previousVersion 確保並發控制）
     result := db.Model(&gormModels.PointsAccountModel{}).
-        Where("account_id = ? AND version = ?", model.AccountID, oldVersion).
+        Where("account_id = ? AND version = ?", model.AccountID, previousVersion).
         Updates(map[string]interface{}{
             "earned_points": model.EarnedPoints,
             "used_points":   model.UsedPoints,
@@ -400,9 +401,252 @@ func registerEventHandlers(
 }
 ```
 
-### 4.4 架構優勢
+### 4.4 依賴方向詳解與架構圖
 
-**依賴方向**:
+#### 4.4.1 完整依賴方向圖
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        main.go (依賴注入層)                        │
+│  職責：連接各層，註冊 Event Handlers 到 Event Bus                │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              │ (組裝依賴)
+                              ↓
+      ┌──────────────────────────────────────────────┐
+      │                                              │
+      ↓                                              ↓
+┌──────────────────┐                    ┌──────────────────────┐
+│ Infrastructure   │                    │ Application Layer    │
+│ Layer            │                    │                      │
+│                  │                    │ - Use Cases          │
+│ - EventBus 實現  │                    │ - Event Handlers     │
+│ - Repository 實現│                    │   * TxVerifiedHandler│
+│ - External APIs  │                    │   * SurveyHandler    │
+└──────────────────┘                    └──────────────────────┘
+      │                                              │
+      │ (實現介面)                                   │ (依賴介面)
+      │                                              │
+      └──────────────────┬───────────────────────────┘
+                         ↓
+                  ┌─────────────────┐
+                  │  Domain Layer   │
+                  │                 │
+                  │  - 介面定義：   │
+                  │    * EventPublisher  │
+                  │    * EventSubscriber │
+                  │    * Repository      │
+                  └─────────────────┘
+```
+
+#### 4.4.2 事件處理流程圖
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│                         事件發布流程                               │
+└──────────────────────────────────────────────────────────────────┘
+
+1. 聚合根產生事件
+   ┌─────────────────────────────────────┐
+   │ Domain Layer (PointsAccount)        │
+   │                                     │
+   │ func (a *PointsAccount)             │
+   │   EarnPoints(...) {                 │
+   │     // 業務邏輯                     │
+   │     a.publishEvent(PointsEarned{}) │  ← 發布事件到聚合內部
+   │ }                                   │
+   └─────────────────────────────────────┘
+                │
+                │ (事件暫存在聚合內部)
+                ↓
+2. Use Case 執行並收集事件
+   ┌─────────────────────────────────────┐
+   │ Application Layer (Use Case)        │
+   │                                     │
+   │ func Execute(...) {                 │
+   │   tx.InTransaction(func() {        │
+   │     account.EarnPoints(...)         │  ← 修改聚合
+   │     repo.Update(account)            │  ← 持久化
+   │   })                                │
+   │                                     │
+   │   events := account.GetEvents()    │  ← 收集事件
+   │   eventPublisher.Publish(events)   │  ← 發布到 Event Bus
+   │ }                                   │
+   └─────────────────────────────────────┘
+                │
+                │ (透過介面發布)
+                ↓
+3. Event Bus 分發事件
+   ┌─────────────────────────────────────┐
+   │ Infrastructure Layer (Event Bus)    │
+   │                                     │
+   │ func (bus *InMemoryEventBus)        │
+   │   Publish(event) {                  │
+   │     handlers := bus.handlers[type] │  ← 查找訂閱者
+   │     for _, h := range handlers {   │
+   │       h.Handle(event)               │  ← 執行 handlers
+   │     }                               │
+   │ }                                   │
+   └─────────────────────────────────────┘
+                │
+                │ (調用註冊的 handlers)
+                ↓
+4. Event Handlers 處理事件
+   ┌─────────────────────────────────────┐
+   │ Application Layer (Event Handler)   │
+   │                                     │
+   │ func (h *TxVerifiedHandler)         │
+   │   Handle(event) {                   │
+   │     // 處理業務邏輯                 │
+   │     uc.RecalculatePoints(...)       │  ← 觸發 Use Case
+   │ }                                   │
+   └─────────────────────────────────────┘
+```
+
+#### 4.4.3 依賴方向規則
+
+**關鍵原則**：
+
+1. **Infrastructure 絕不依賴 Application**
+   ```go
+   // ❌ 錯誤：Infrastructure 直接 import Application
+   package messaging
+
+   import "github.com/yourorg/bar_crm/internal/application/events"
+
+   func NewEventBus() *EventBus {
+       bus := &EventBus{}
+       // ❌ Infrastructure 不應該知道具體的 Handler 實現
+       bus.handlers["PointsEarned"] = &events.PointsEarnedHandler{}
+       return bus
+   }
+   ```
+
+   ```go
+   // ✅ 正確：Infrastructure 只提供技術機制
+   package messaging
+
+   import "github.com/yourorg/bar_crm/internal/domain/shared"
+
+   func NewEventBus() *InMemoryEventBus {
+       return &InMemoryEventBus{
+           handlers: make(map[string][]shared.EventHandler),
+       }
+   }
+
+   // ✅ Subscribe 接受 shared.EventHandler 介面
+   func (bus *InMemoryEventBus) Subscribe(
+       eventType string,
+       handler shared.EventHandler,  // 介面類型，不知道具體實現
+   ) error {
+       // ...
+   }
+   ```
+
+2. **Application 依賴 Domain 介面**
+   ```go
+   // ✅ 正確：Application 依賴 Domain 定義的介面
+   package usecases
+
+   import (
+       "github.com/yourorg/bar_crm/internal/domain/shared"
+       "github.com/yourorg/bar_crm/internal/domain/points/repository"
+   )
+
+   type EarnPointsUseCase struct {
+       accountRepo     repository.PointsAccountRepository  // Domain 介面
+       eventPublisher  shared.EventPublisher               // Domain 介面
+   }
+   ```
+
+3. **依賴注入在 main.go 連接各層**
+   ```go
+   // ✅ 正確：main.go 是唯一知道所有層的地方
+   package main
+
+   import (
+       // Domain Layer
+       "github.com/yourorg/bar_crm/internal/domain/shared"
+
+       // Application Layer
+       "github.com/yourorg/bar_crm/internal/application/events/points"
+
+       // Infrastructure Layer
+       "github.com/yourorg/bar_crm/internal/infrastructure/messaging"
+   )
+
+   func main() {
+       // 1. 創建 Infrastructure 實現
+       eventBus := messaging.NewInMemoryEventBus()
+
+       // 2. 創建 Application Handlers
+       handler := points.NewTransactionVerifiedHandler(...)
+
+       // 3. 連接兩者（註冊）
+       eventBus.Subscribe("TransactionVerified", handler)
+   }
+   ```
+
+#### 4.4.4 為什麼這樣設計？
+
+**問題**：為什麼不讓 Event Bus 直接知道所有 Event Handlers？
+
+```go
+// ❌ 錯誤設計：緊耦合
+type EventBus struct {
+    txVerifiedHandler *events.TransactionVerifiedHandler
+    surveyHandler     *events.SurveyCompletedHandler
+}
+
+func (bus *EventBus) Publish(event DomainEvent) {
+    switch event.EventType() {
+    case "TransactionVerified":
+        bus.txVerifiedHandler.Handle(event)  // Infrastructure 依賴 Application
+    case "SurveyCompleted":
+        bus.surveyHandler.Handle(event)
+    }
+}
+```
+
+**問題**：
+1. ❌ Infrastructure 依賴 Application（違反依賴規則）
+2. ❌ 新增 Handler 需要修改 Infrastructure 代碼（違反 OCP）
+3. ❌ 無法單獨測試 Event Bus（緊耦合）
+
+**正確設計**：
+
+```go
+// ✅ 正確：基於介面的鬆耦合
+type InMemoryEventBus struct {
+    handlers map[string][]shared.EventHandler  // 介面類型
+}
+
+func (bus *InMemoryEventBus) Subscribe(
+    eventType string,
+    handler shared.EventHandler,  // 接受任何實現介面的 handler
+) error {
+    bus.handlers[eventType] = append(bus.handlers[eventType], handler)
+    return nil
+}
+
+func (bus *InMemoryEventBus) Publish(event shared.DomainEvent) error {
+    handlers := bus.handlers[event.EventType()]
+    for _, handler := range handlers {
+        handler.Handle(event)  // 多態調用
+    }
+    return nil
+}
+```
+
+**優勢**：
+1. ✅ Infrastructure 只知道 `shared.EventHandler` 介面（依賴反轉）
+2. ✅ 新增 Handler 無需修改 Infrastructure 代碼（符合 OCP）
+3. ✅ 可單獨測試 Event Bus（使用 mock handler）
+4. ✅ 依賴方向正確（Infrastructure → Domain ← Application）
+
+### 4.5 架構優勢總結
+
+**依賴方向總結**:
 ```
 Presentation Layer (HTTP Handlers)
          ↓
@@ -418,6 +662,7 @@ Infrastructure Layer (InMemoryEventBus 實現)
 2. ✅ Application 透過介面使用 Event Bus（解耦）
 3. ✅ 依賴注入在 main.go 統一配置（清晰可見）
 4. ✅ 符合 Clean Architecture 依賴規則（內層不依賴外層）
+5. ✅ Infrastructure **絕不**直接依賴 Application Layer
 
 ---
 

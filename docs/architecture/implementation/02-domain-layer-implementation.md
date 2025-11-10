@@ -258,6 +258,16 @@ func (a *PointsAccount) GetVersion() int {
     return a.version
 }
 
+// GetPreviousVersion 獲取上一個版本號（用於樂觀鎖檢查）
+// Repository 在 Update 時使用此方法獲取 WHERE 條件中的版本號
+// 這避免了 Repository 需要計算 version - 1 的職責洩漏
+func (a *PointsAccount) GetPreviousVersion() int {
+    if a.version <= 1 {
+        return 1  // 新創建的聚合，上一個版本就是 1
+    }
+    return a.version - 1
+}
+
 // --- 聚合重建方法（僅供 Infrastructure Layer 使用）---
 
 // ReconstructPointsAccount 從持久化存儲重建聚合根
@@ -826,30 +836,62 @@ import (
     "github.com/yourorg/bar_crm/internal/domain/shared"
 )
 
-// PointsAccountRepository 積分帳戶倉儲接口
-// 設計原則：接口屬於 Domain Layer（使用者），由 Infrastructure 實現
-type PointsAccountRepository interface {
-    // 創建操作
+// ===========================
+// 接口隔離原則（ISP）設計
+// ===========================
+// 按職責拆分接口，Use Case 只依賴需要的接口，而不是依賴完整的 Repository
+//
+// 優勢：
+// 1. 降低耦合度 - Use Case 只依賴使用的方法
+// 2. 提高可測試性 - Mock 更簡單
+// 3. 符合 SOLID 原則 - 接口隔離原則（ISP）
+// 4. 清晰的職責劃分 - 讀寫分離
+
+// PointsAccountWriter 寫操作接口
+// Use Case 只需要寫操作時，依賴此接口
+type PointsAccountWriter interface {
+    // Create 創建新的積分帳戶
     Create(ctx shared.TransactionContext, account *points.PointsAccount) error
 
-    // 更新操作（支持樂觀鎖）
+    // Update 更新積分帳戶（支持樂觀鎖）
     Update(ctx shared.TransactionContext, account *points.PointsAccount) error
+}
 
-    // 查詢操作
+// PointsAccountReader 查詢操作接口
+// Use Case 只需要讀操作時，依賴此接口
+type PointsAccountReader interface {
+    // FindByID 根據帳戶 ID 查詢
     FindByID(ctx shared.TransactionContext, accountID points.AccountID) (*points.PointsAccount, error)
+
+    // FindByMemberID 根據會員 ID 查詢
     FindByMemberID(ctx shared.TransactionContext, memberID points.MemberID) (*points.PointsAccount, error)
 
-    // 批次操作
+    // ExistsByMemberID 檢查會員是否已有積分帳戶
+    ExistsByMemberID(ctx shared.TransactionContext, memberID points.MemberID) (bool, error)
+}
+
+// PointsAccountBatchReader 批次查詢接口
+// Use Case 需要批次操作時，依賴此接口
+type PointsAccountBatchReader interface {
+    // FindAll 查詢所有積分帳戶（分頁參數可選）
     FindAll(ctx shared.TransactionContext) ([]*points.PointsAccount, error)
 
-    // 存在性檢查
-    ExistsByMemberID(ctx shared.TransactionContext, memberID points.MemberID) (bool, error)
+    // FindByIDs 批次查詢（根據 ID 列表）
+    FindByIDs(ctx shared.TransactionContext, accountIDs []points.AccountID) ([]*points.PointsAccount, error)
+}
+
+// PointsAccountRepository 完整的倉儲接口（組合所有小接口）
+// Infrastructure 實現此接口，Use Case 只依賴需要的小接口
+type PointsAccountRepository interface {
+    PointsAccountWriter
+    PointsAccountReader
+    PointsAccountBatchReader
 }
 
 // 倉儲錯誤（屬於 Domain Layer）
 var (
-    ErrAccountNotFound      = errors.New("points account not found")
-    ErrAccountAlreadyExists = errors.New("points account already exists")
+    ErrAccountNotFound        = errors.New("points account not found")
+    ErrAccountAlreadyExists   = errors.New("points account already exists")
     ErrConcurrentModification = errors.New("concurrent modification detected")
 )
 ```
@@ -880,6 +922,205 @@ func (r *GormPointsAccountRepository) FindByID(...) (*points.PointsAccount, erro
     return nil, gorm.ErrRecordNotFound  // 洩漏 GORM 錯誤到上層
 }
 ```
+
+### 5.3 使用接口隔離的 Use Case 設計
+
+#### 範例 1：只需要讀操作的 Use Case
+
+```go
+// internal/application/usecases/points/get_points_balance.go
+package points
+
+import (
+    "github.com/yourorg/bar_crm/internal/domain/points/repository"
+    "github.com/yourorg/bar_crm/internal/domain/points"
+)
+
+// GetPointsBalanceUseCase 查詢積分餘額（只讀操作）
+type GetPointsBalanceUseCase struct {
+    // ✅ 只依賴 Reader 接口，不依賴完整的 Repository
+    accountReader repository.PointsAccountReader
+}
+
+func NewGetPointsBalanceUseCase(
+    accountReader repository.PointsAccountReader,  // 只需要 Reader
+) *GetPointsBalanceUseCase {
+    return &GetPointsBalanceUseCase{
+        accountReader: accountReader,
+    }
+}
+
+func (uc *GetPointsBalanceUseCase) Execute(memberID points.MemberID) (int, error) {
+    account, err := uc.accountReader.FindByMemberID(ctx, memberID)
+    if err != nil {
+        return 0, err
+    }
+    return account.GetAvailablePoints().Value(), nil
+}
+```
+
+**優勢**：
+- ✅ Use Case 只依賴讀接口，明確表達只做查詢
+- ✅ Mock 更簡單（只需 mock Reader，不需 mock Writer）
+- ✅ 防止誤用（無法調用寫方法）
+
+#### 範例 2：需要讀寫操作的 Use Case
+
+```go
+// internal/application/usecases/points/earn_points.go
+package points
+
+type EarnPointsUseCase struct {
+    // ✅ 讀操作依賴 Reader 接口
+    accountReader repository.PointsAccountReader
+    // ✅ 寫操作依賴 Writer 接口
+    accountWriter repository.PointsAccountWriter
+}
+
+func NewEarnPointsUseCase(
+    accountReader repository.PointsAccountReader,
+    accountWriter repository.PointsAccountWriter,
+) *EarnPointsUseCase {
+    return &EarnPointsUseCase{
+        accountReader: accountReader,
+        accountWriter: accountWriter,
+    }
+}
+
+func (uc *EarnPointsUseCase) Execute(cmd EarnPointsCommand) error {
+    // 1. 讀取聚合
+    account, err := uc.accountReader.FindByMemberID(ctx, cmd.MemberID)
+    if err != nil {
+        return err
+    }
+
+    // 2. 執行業務邏輯
+    err = account.EarnPoints(cmd.Amount, cmd.Source, cmd.SourceID, cmd.Description)
+    if err != nil {
+        return err
+    }
+
+    // 3. 持久化
+    return uc.accountWriter.Update(ctx, account)
+}
+```
+
+**優勢**：
+- ✅ 讀寫職責分離，更清晰
+- ✅ 可以注入不同的實現（例如：讀從緩存，寫到數據庫）
+- ✅ Mock 更靈活（可以分別 mock Reader 和 Writer）
+
+#### 範例 3：Infrastructure 實現完整接口
+
+```go
+// internal/infrastructure/persistence/points/gorm_account_repository.go
+package points
+
+import (
+    "github.com/yourorg/bar_crm/internal/domain/points/repository"
+    "github.com/yourorg/bar_crm/internal/domain/points"
+)
+
+// GormPointsAccountRepository 實現完整的 Repository 接口
+// 一個實現滿足所有小接口
+type GormPointsAccountRepository struct {
+    db *gorm.DB
+}
+
+// 確保 GormPointsAccountRepository 實現了所有接口
+var (
+    _ repository.PointsAccountWriter      = (*GormPointsAccountRepository)(nil)
+    _ repository.PointsAccountReader      = (*GormPointsAccountRepository)(nil)
+    _ repository.PointsAccountBatchReader = (*GormPointsAccountRepository)(nil)
+    _ repository.PointsAccountRepository  = (*GormPointsAccountRepository)(nil)
+)
+
+// Create 實現 PointsAccountWriter 接口
+func (r *GormPointsAccountRepository) Create(...) error {
+    // ...
+}
+
+// Update 實現 PointsAccountWriter 接口
+func (r *GormPointsAccountRepository) Update(...) error {
+    // ...
+}
+
+// FindByID 實現 PointsAccountReader 接口
+func (r *GormPointsAccountRepository) FindByID(...) (*points.PointsAccount, error) {
+    // ...
+}
+
+// FindByMemberID 實現 PointsAccountReader 接口
+func (r *GormPointsAccountRepository) FindByMemberID(...) (*points.PointsAccount, error) {
+    // ...
+}
+
+// ExistsByMemberID 實現 PointsAccountReader 接口
+func (r *GormPointsAccountRepository) ExistsByMemberID(...) (bool, error) {
+    // ...
+}
+
+// FindAll 實現 PointsAccountBatchReader 接口
+func (r *GormPointsAccountRepository) FindAll(...) ([]*points.PointsAccount, error) {
+    // ...
+}
+
+// FindByIDs 實現 PointsAccountBatchReader 接口
+func (r *GormPointsAccountRepository) FindByIDs(...) ([]*points.PointsAccount, error) {
+    // ...
+}
+```
+
+#### 範例 4：依賴注入配置
+
+```go
+// cmd/app/main.go
+func main() {
+    fx.New(
+        // 1. 提供 Repository 實現（單例）
+        fx.Provide(func(db *gorm.DB) *points.GormPointsAccountRepository {
+            return points.NewGormPointsAccountRepository(db)
+        }),
+
+        // 2. 將實現註冊為多個接口
+        fx.Provide(
+            fx.Annotate(
+                func(repo *points.GormPointsAccountRepository) repository.PointsAccountReader {
+                    return repo
+                },
+            ),
+            fx.Annotate(
+                func(repo *points.GormPointsAccountRepository) repository.PointsAccountWriter {
+                    return repo
+                },
+            ),
+            fx.Annotate(
+                func(repo *points.GormPointsAccountRepository) repository.PointsAccountBatchReader {
+                    return repo
+                },
+            ),
+        ),
+
+        // 3. Use Case 自動注入需要的接口
+        fx.Provide(
+            usecases.NewGetPointsBalanceUseCase,  // 自動注入 Reader
+            usecases.NewEarnPointsUseCase,        // 自動注入 Reader + Writer
+        ),
+    ).Run()
+}
+```
+
+### 5.4 接口隔離的優勢總結
+
+| 方面 | 單一大接口 ❌ | 接口隔離（ISP）✅ |
+|------|--------------|-----------------|
+| **依賴清晰度** | 不清楚 Use Case 使用哪些方法 | 一眼看出依賴的操作類型 |
+| **測試複雜度** | Mock 需要實現所有方法 | 只 Mock 需要的接口 |
+| **錯誤使用防護** | 可能誤調用不需要的方法 | 編譯期阻止誤用 |
+| **讀寫分離** | 混在一起 | 清晰的讀寫分離 |
+| **擴展性** | 添加方法影響所有依賴者 | 只影響使用該子接口的依賴者 |
+
+**參考範例**：Audit Context 的接口設計（`01-directory-structure.md` L97-101）也遵循了相同的接口隔離原則。
 
 ---
 

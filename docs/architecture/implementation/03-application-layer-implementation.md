@@ -478,6 +478,418 @@ func (s *ApplicationService) ExecuteInTransactionWithOutbox(
 }
 ```
 
+## 5. 跨聚合事務與最終一致性
+
+### 5.1 核心原則
+
+在 DDD 和 Clean Architecture 中，有一個重要的設計原則：
+
+> **一個事務只能修改一個聚合根**
+
+這個原則的目的是：
+1. 保持聚合邊界清晰
+2. 避免分佈式事務的複雜性
+3. 提高系統可擴展性
+4. 減少鎖競爭
+
+**當需要同時修改多個聚合時，應該使用領域事件實現最終一致性**。
+
+### 5.2 反模式：在一個事務中修改多個聚合
+
+#### 錯誤示範
+
+```go
+// ❌ 錯誤：在一個事務中修改多個聚合
+func (uc *RedeemPointsUseCase) Execute(cmd RedeemPointsCommand) error {
+    return uc.txManager.InTransaction(func(ctx shared.TransactionContext) error {
+        // 1. 修改第一個聚合（PointsAccount）
+        account, err := uc.accountRepo.FindByID(ctx, cmd.AccountID)
+        if err != nil {
+            return err
+        }
+
+        err = account.DeductPoints(cmd.Points, cmd.RewardID)
+        if err != nil {
+            return err
+        }
+
+        uc.accountRepo.Update(ctx, account)
+
+        // 2. 修改第二個聚合（Redemption）
+        redemption, err := uc.redemptionRepo.FindByID(ctx, cmd.RedemptionID)
+        if err != nil {
+            return err
+        }
+
+        redemption.MarkAsCompleted()
+        uc.redemptionRepo.Update(ctx, redemption)
+
+        // ❌ 問題：
+        // - 違反聚合邊界原則
+        // - 增加事務持有時間（鎖競爭）
+        // - 兩個聚合緊耦合
+        // - 如果 redemption 更新失敗，account 已經扣減積分（數據不一致）
+
+        return nil
+    })
+}
+```
+
+**問題分析**：
+
+1. **違反聚合邊界**：`PointsAccount` 和 `Redemption` 是兩個獨立的聚合，不應在同一事務中修改
+2. **事務時間過長**：持有兩個聚合的鎖，增加並發衝突
+3. **緊耦合**：`PointsAccount` 的修改依賴於 `Redemption` 的存在
+4. **錯誤處理複雜**：如果第二個聚合更新失敗，第一個聚合的修改需要回滾
+
+### 5.3 正確模式：使用領域事件實現最終一致性
+
+#### 正確示範
+
+**Step 1: 扣除積分（第一個事務）**
+
+```go
+// ✅ 正確：只修改一個聚合
+func (uc *DeductPointsUseCase) Execute(cmd DeductPointsCommand) error {
+    return uc.appService.ExecuteInTransaction(func(ctx shared.TransactionContext) ([]shared.AggregateRoot, error) {
+        // 1. 查找聚合
+        account, err := uc.accountRepo.FindByID(ctx, cmd.AccountID)
+        if err != nil {
+            return nil, err
+        }
+
+        // 2. 執行業務邏輯
+        err = account.DeductPoints(cmd.Points, cmd.Reason)
+        if err != nil {
+            return nil, err  // 業務規則檢查失敗（如積分不足）
+        }
+
+        // 3. 持久化聚合
+        err = uc.accountRepo.Update(ctx, account)
+        if err != nil {
+            return nil, err
+        }
+
+        // 4. 返回聚合（ApplicationService 會自動收集並發布事件）
+        return []shared.AggregateRoot{account}, nil
+
+        // ✅ 事件 PointsDeducted 會在事務成功後自動發布
+    })
+}
+```
+
+**Step 2: 事件處理器創建兌換記錄（第二個事務）**
+
+```go
+// internal/application/events/points/points_deducted_handler.go
+package points
+
+import (
+    "github.com/yourorg/bar_crm/internal/application/usecases/redemption"
+    "github.com/yourorg/bar_crm/internal/domain/shared"
+)
+
+// PointsDeductedHandler 處理積分扣除事件
+type PointsDeductedHandler struct {
+    createRedemptionUC *redemption.CreateRedemptionUseCase
+}
+
+func NewPointsDeductedHandler(
+    createRedemptionUC *redemption.CreateRedemptionUseCase,
+) *PointsDeductedHandler {
+    return &PointsDeductedHandler{
+        createRedemptionUC: createRedemptionUC,
+    }
+}
+
+func (h *PointsDeductedHandler) EventType() string {
+    return "PointsDeducted"
+}
+
+// Handle 處理事件（在獨立的事務中執行）
+func (h *PointsDeductedHandler) Handle(event shared.DomainEvent) error {
+    pointsDeducted := event.(PointsDeductedEvent)
+
+    // ✅ 在新的事務中創建兌換記錄
+    cmd := redemption.CreateRedemptionCommand{
+        AccountID: pointsDeducted.AccountID(),
+        Points:    pointsDeducted.Amount(),
+        Reason:    pointsDeducted.Reason(),
+    }
+
+    _, err := h.createRedemptionUC.Execute(cmd)
+    if err != nil {
+        // ⚠️ 如果創建失敗，應該記錄錯誤並重試
+        // 可以使用 Outbox Pattern 確保事件最終被處理
+        return err
+    }
+
+    return nil
+}
+```
+
+**Step 3: 創建兌換記錄 Use Case**
+
+```go
+// internal/application/usecases/redemption/create_redemption.go
+package redemption
+
+func (uc *CreateRedemptionUseCase) Execute(cmd CreateRedemptionCommand) (*Redemption, error) {
+    return uc.appService.ExecuteInTransaction(func(ctx shared.TransactionContext) ([]shared.AggregateRoot, error) {
+        // 1. 創建兌換記錄聚合
+        redemption := redemption.NewRedemption(
+            cmd.AccountID,
+            cmd.Points,
+            cmd.Reason,
+        )
+
+        // 2. 持久化
+        err := uc.redemptionRepo.Create(ctx, redemption)
+        if err != nil {
+            return nil, err
+        }
+
+        // 3. 返回聚合
+        return []shared.AggregateRoot{redemption}, nil
+
+        // ✅ 事件 RedemptionCreated 會在事務成功後發布
+    })
+}
+```
+
+### 5.4 設計優勢對比
+
+| 方面 | 一個事務修改多個聚合 ❌ | 領域事件 + 最終一致性 ✅ |
+|------|------------------------|------------------------|
+| **聚合邊界** | 違反邊界原則 | 保持邊界清晰 |
+| **事務持有時間** | 長（多個聚合） | 短（單個聚合） |
+| **鎖競爭** | 高 | 低 |
+| **可擴展性** | 差（緊耦合） | 好（鬆耦合） |
+| **錯誤處理** | 複雜（需回滾） | 簡單（獨立處理） |
+| **測試性** | 難（多個聚合依賴） | 易（單個聚合測試） |
+
+### 5.5 最終一致性的保證
+
+#### 問題：如果事件處理失敗怎麼辦？
+
+**場景**：
+1. ✅ 事務 1 成功：積分已扣除，`PointsDeducted` 事件發布
+2. ❌ 事件處理失敗：創建兌換記錄失敗
+
+**結果**：積分已扣除，但兌換記錄未創建 → 數據不一致
+
+#### 解決方案 1：事件重試機制
+
+```go
+// internal/application/events/points/points_deducted_handler.go
+func (h *PointsDeductedHandler) Handle(event shared.DomainEvent) error {
+    maxRetries := 3
+    var err error
+
+    for attempt := 1; attempt <= maxRetries; attempt++ {
+        err = h.createRedemptionUC.Execute(cmd)
+        if err == nil {
+            return nil  // 成功
+        }
+
+        // 如果是業務錯誤（如重複創建），不重試
+        if errors.Is(err, redemption.ErrDuplicateRedemption) {
+            return nil  // 冪等性：已經創建過了
+        }
+
+        // 技術錯誤（數據庫連接失敗等），重試
+        time.Sleep(time.Duration(attempt) * time.Second)
+    }
+
+    // 所有重試失敗，記錄到死信隊列
+    return fmt.Errorf("failed after %d retries: %w", maxRetries, err)
+}
+```
+
+#### 解決方案 2：Outbox Pattern（生產推薦）
+
+參考 [4.3 Outbox Pattern（未來擴展）](04-infrastructure-layer-implementation.md#43-outbox-pattern)，確保事件最終會被處理。
+
+**流程**：
+1. 在同一事務中保存事件到 `outbox` 表
+2. 後台任務從 `outbox` 表讀取事件並發布
+3. 發布成功後標記事件為已處理
+4. 保證事件不會丟失
+
+### 5.6 冪等性設計
+
+由於事件可能被重複處理（重試、網絡問題），Event Handler 必須設計為冪等的。
+
+#### 冪等性實現方式
+
+**方式 1：業務唯一鍵檢查**
+
+```go
+func (uc *CreateRedemptionUseCase) Execute(cmd CreateRedemptionCommand) (*Redemption, error) {
+    return uc.appService.ExecuteInTransaction(func(ctx shared.TransactionContext) ([]shared.AggregateRoot, error) {
+        // 1. 檢查是否已存在（冪等性保證）
+        existing, err := uc.redemptionRepo.FindByAccountIDAndReason(ctx, cmd.AccountID, cmd.Reason)
+        if err == nil && existing != nil {
+            return []shared.AggregateRoot{existing}, nil  // 已存在，直接返回
+        }
+
+        // 2. 創建新記錄
+        redemption := redemption.NewRedemption(cmd.AccountID, cmd.Points, cmd.Reason)
+        // ...
+    })
+}
+```
+
+**方式 2：事件 ID 追蹤**
+
+```go
+// 在數據庫中記錄已處理的事件 ID
+type ProcessedEvent struct {
+    EventID   string
+    EventType string
+    ProcessedAt time.Time
+}
+
+func (h *PointsDeductedHandler) Handle(event shared.DomainEvent) error {
+    // 1. 檢查事件是否已處理
+    processed, _ := h.eventRepo.IsProcessed(event.EventID())
+    if processed {
+        return nil  // 已處理，跳過
+    }
+
+    // 2. 處理事件
+    err := h.createRedemptionUC.Execute(cmd)
+    if err != nil {
+        return err
+    }
+
+    // 3. 標記事件為已處理
+    h.eventRepo.MarkAsProcessed(event.EventID())
+
+    return nil
+}
+```
+
+### 5.7 實際案例：積分兌換流程
+
+#### 完整流程圖
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                       積分兌換完整流程                            │
+└─────────────────────────────────────────────────────────────────┘
+
+Step 1: 用戶請求兌換
+  ↓
+┌─────────────────────────────────────┐
+│ Presentation Layer                  │
+│ POST /api/points/redeem             │
+└─────────────────────────────────────┘
+  ↓
+Step 2: 扣除積分（事務 1）
+┌─────────────────────────────────────┐
+│ DeductPointsUseCase                 │
+│                                     │
+│ 1. account.DeductPoints()           │
+│ 2. accountRepo.Update()             │
+│ 3. 發布 PointsDeducted 事件         │
+└─────────────────────────────────────┘
+  ↓
+Step 3: 事件處理（事務 2）
+┌─────────────────────────────────────┐
+│ PointsDeductedHandler               │
+│                                     │
+│ Handle(PointsDeducted) {            │
+│   CreateRedemptionUseCase.Execute() │
+│ }                                   │
+└─────────────────────────────────────┘
+  ↓
+Step 4: 創建兌換記錄（事務 2）
+┌─────────────────────────────────────┐
+│ CreateRedemptionUseCase             │
+│                                     │
+│ 1. redemption = NewRedemption()     │
+│ 2. redemptionRepo.Create()          │
+│ 3. 發布 RedemptionCreated 事件      │
+└─────────────────────────────────────┘
+  ↓
+Step 5: 通知用戶（事務 3，可選）
+┌─────────────────────────────────────┐
+│ RedemptionCreatedHandler            │
+│                                     │
+│ Handle(RedemptionCreated) {         │
+│   notificationService.Send(...)     │
+│ }                                   │
+└─────────────────────────────────────┘
+```
+
+#### 時序圖
+
+```
+用戶         API          DeductPointsUC    EventBus    Handler    CreateRedemptionUC
+ │            │                 │              │           │              │
+ │── POST ───>│                 │              │           │              │
+ │            │── Execute ─────>│              │           │              │
+ │            │                 │              │           │              │
+ │            │                 │── TX BEGIN ──┤           │              │
+ │            │                 │              │           │              │
+ │            │                 │ DeductPoints │           │              │
+ │            │                 │ Update(DB)   │           │              │
+ │            │                 │              │           │              │
+ │            │                 │── TX COMMIT ─┤           │              │
+ │            │                 │              │           │              │
+ │            │                 │─ Publish Event ────────>│              │
+ │            │                 │              │           │              │
+ │            │<── Success ─────│              │           │              │
+ │<── 200 ────│                 │              │           │              │
+ │            │                 │              │           │              │
+ │            │                 │              │           │─ Handle ────>│
+ │            │                 │              │           │              │
+ │            │                 │              │           │── TX BEGIN ──┤
+ │            │                 │              │           │              │
+ │            │                 │              │           │ Create       │
+ │            │                 │              │           │ Redemption   │
+ │            │                 │              │           │              │
+ │            │                 │              │           │── TX COMMIT ─┤
+ │            │                 │              │           │              │
+ │            │                 │              │           │<─ Success ───│
+```
+
+### 5.8 何時可以在一個事務中修改多個聚合？
+
+**例外情況**（需謹慎使用）：
+
+1. **兩個聚合屬於同一個 Bounded Context，且業務上必須原子性操作**
+   - 例如：轉帳（從帳戶 A 扣款，向帳戶 B 入款）
+   - 但即使這種情況，也建議拆分為兩個事務 + Saga 模式
+
+2. **性能關鍵路徑，且聚合非常簡單**
+   - 例如：計數器 + 日誌記錄
+   - 但這通常意味著聚合邊界劃分有問題
+
+**一般建議**：
+- ✅ 優先使用領域事件 + 最終一致性
+- ⚠️ 只在極特殊情況下才考慮多聚合事務
+- ❌ 避免跨 Bounded Context 的事務
+
+### 5.9 總結
+
+**核心原則**：
+1. 一個事務只修改一個聚合根
+2. 跨聚合操作使用領域事件
+3. 接受最終一致性（Eventual Consistency）
+4. 確保事件處理的冪等性
+5. 使用 Outbox Pattern 保證事件不丟失
+
+**設計優勢**：
+- ✅ 保持聚合邊界清晰
+- ✅ 降低鎖競爭和事務持有時間
+- ✅ 提高系統可擴展性
+- ✅ 簡化錯誤處理
+- ✅ 更好的測試性
+
+**記住**：最終一致性不是缺陷，而是分佈式系統的必然選擇。關鍵是要有完善的事件處理機制（重試、Outbox、監控）來保證數據最終一致。
+
 ---
 
 **下一步**: 閱讀 [04-Infrastructure Layer 實現指南](./04-infrastructure-layer-implementation.md)
