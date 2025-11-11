@@ -1,6 +1,11 @@
 package points
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/google/uuid"
+	"github.com/shopspring/decimal"
+)
 
 // PointsAmount 積分數量值對象
 // 設計原則：值對象不可變、自我驗證
@@ -89,4 +94,155 @@ func (p PointsAmount) LessThan(other PointsAmount) bool {
 // GreaterThanOrEqual 判斷是否大於等於另一個 PointsAmount
 func (p PointsAmount) GreaterThanOrEqual(other PointsAmount) bool {
 	return p.value >= other.value
+}
+
+// ConversionRate 轉換率值對象（例如 100 元 = 1 點）
+// 設計原則：值對象不可變、自我驗證
+//
+// 業務規則：範圍 1-1000
+// - 最小值 1：表示 1 元 = 1 點（極端促銷）
+// - 最大值 1000：表示 1000 元 = 1 點（極低回饋率）
+// - 標準值 100：表示 100 元 = 1 點（常見設定）
+type ConversionRate struct {
+	value int
+}
+
+// NewConversionRate 建構函數（checked 版本）
+// 對外部輸入進行完整驗證
+//
+// 建構約束：轉換率必須在 1-1000 範圍內
+func NewConversionRate(value int) (ConversionRate, error) {
+	if value < 1 || value > 1000 {
+		return ConversionRate{}, fmt.Errorf(
+			"%w: attempted to create ConversionRate with value %d (must be 1-1000)",
+			ErrInvalidConversionRate,
+			value,
+		)
+	}
+	return ConversionRate{value: value}, nil
+}
+
+// Value 獲取轉換率值
+func (r ConversionRate) Value() int {
+	return r.value
+}
+
+// Equals 比較兩個 ConversionRate 是否相等
+func (r ConversionRate) Equals(other ConversionRate) bool {
+	return r.value == other.value
+}
+
+// CalculatePoints 計算積分（核心業務邏輯）
+// 積分 = floor(金額 / 轉換率)
+//
+// 設計原則：
+// 1. 使用向下取整（floor）：99.99 元在 100 TWD/點 的規則下為 0 點
+// 2. 處理負數金額：返回 0 點（理論上不應該發生）
+// 3. 使用 decimal.Decimal 確保精確計算
+//
+// 業務規則：積分必須為非負整數
+func (r ConversionRate) CalculatePoints(amount decimal.Decimal) PointsAmount {
+	// 防止除以零（理論上不會發生，因為 ConversionRate >= 1）
+	if r.value == 0 {
+		return newPointsAmountUnchecked(0)
+	}
+
+	// 計算：amount / conversion_rate，然後向下取整
+	rate := decimal.NewFromInt(int64(r.value))
+	points := amount.Div(rate).Floor().IntPart()
+
+	// floor 結果可能為負數（如果 amount 為負）
+	// 我們確保返回的積分 >= 0
+	if points < 0 {
+		return newPointsAmountUnchecked(0)
+	}
+
+	// 安全使用 unchecked 建構：已確保 points >= 0
+	return newPointsAmountUnchecked(int(points))
+}
+
+// AccountID 帳戶 ID 值對象（UUID 封裝）
+// 設計原則：值對象不可變、自我驗證
+//
+// 用途：唯一標識一個積分帳戶
+type AccountID struct {
+	value uuid.UUID
+}
+
+// NewAccountID 生成新的帳戶 ID（使用 UUID v4）
+func NewAccountID() AccountID {
+	return AccountID{value: uuid.New()}
+}
+
+// AccountIDFromString 從字串解析帳戶 ID
+// 建構約束：必須是有效的 UUID 格式
+func AccountIDFromString(s string) (AccountID, error) {
+	id, err := uuid.Parse(s)
+	if err != nil {
+		return AccountID{}, fmt.Errorf(
+			"%w: attempted to parse AccountID from invalid UUID string '%s': %v",
+			ErrInvalidAccountID,
+			s,
+			err,
+		)
+	}
+	return AccountID{value: id}, nil
+}
+
+// String 轉換為字串表示（小寫 UUID）
+func (a AccountID) String() string {
+	return a.value.String()
+}
+
+// Equals 比較兩個 AccountID 是否相等
+func (a AccountID) Equals(other AccountID) bool {
+	return a.value == other.value
+}
+
+// IsEmpty 判斷是否為空 ID（零值）
+func (a AccountID) IsEmpty() bool {
+	return a.value == uuid.Nil
+}
+
+// MemberID 會員 ID 值對象（UUID 封裝）
+// 設計原則：值對象不可變、自我驗證
+//
+// 用途：唯一標識一個會員
+type MemberID struct {
+	value uuid.UUID
+}
+
+// NewMemberID 生成新的會員 ID（使用 UUID v4）
+func NewMemberID() MemberID {
+	return MemberID{value: uuid.New()}
+}
+
+// MemberIDFromString 從字串解析會員 ID
+// 建構約束：必須是有效的 UUID 格式
+func MemberIDFromString(s string) (MemberID, error) {
+	id, err := uuid.Parse(s)
+	if err != nil {
+		return MemberID{}, fmt.Errorf(
+			"%w: attempted to parse MemberID from invalid UUID string '%s': %v",
+			ErrInvalidMemberID,
+			s,
+			err,
+		)
+	}
+	return MemberID{value: id}, nil
+}
+
+// String 轉換為字串表示（小寫 UUID）
+func (m MemberID) String() string {
+	return m.value.String()
+}
+
+// Equals 比較兩個 MemberID 是否相等
+func (m MemberID) Equals(other MemberID) bool {
+	return m.value == other.value
+}
+
+// IsEmpty 判斷是否為空 ID（零值）
+func (m MemberID) IsEmpty() bool {
+	return m.value == uuid.Nil
 }

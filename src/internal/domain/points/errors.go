@@ -16,3 +16,6 @@ var ErrInvalidAccountID = fmt.Errorf("invalid account ID")
 
 // ErrInvalidMemberID 無效的會員 ID
 var ErrInvalidMemberID = fmt.Errorf("invalid member ID")
+
+// ErrInvalidConversionRate 無效的轉換率
+var ErrInvalidConversionRate = fmt.Errorf("invalid conversion rate")
