@@ -76,12 +76,38 @@ internal/                        ← 實際代碼（Code）
    - 測試代碼範例
    - 常見錯誤與解決方案
 
+### 9. **[生產環境保護措施](./09-production-safeguards.md)**
+   - Panic Recovery Middleware
+   - 監控與告警機制
+   - 資料完整性保護
+   - 錯誤處理最佳實踐
+
+### 10. **[實作路線圖](./10-implementation-roadmap.md)** ⭐ 開始實作必讀
+   - 設計決策總結
+   - 10 階段實作計劃（12 週）
+   - 每週檢查點與里程碑
+   - TDD 工作流程
+   - 測試策略與覆蓋率目標
+   - 立即行動步驟（Day 1 任務）
+   - 風險管理
+
+### 11. **[詳細任務分解計劃](./11-detailed-task-breakdown.md)** 🔥 每日執行指南
+   - 精確到小時的任務分配
+   - Day-by-Day 執行步驟（Week 1-3 天完整範例）
+   - 完整測試程式碼範例（TDD 流程）
+   - 完整實作程式碼範例
+   - 每個任務的完成標準
+   - 每日檢查點驗證
+   - 進度追蹤表格
+   - 常用命令快速參考
+
 ---
 
 ## 快速開始
 
 ### 我想知道...
 
+- **🚀 我要開始實作了，從哪裡開始？** → 閱讀 [10-實作路線圖](./10-implementation-roadmap.md)（包含第一天任務）
 - **如何組織項目目錄？** → 閱讀 [01-目錄結構設計](./01-directory-structure.md)
 - **如何實現聚合根？** → 閱讀 [02-Domain Layer 實現指南](./02-domain-layer-implementation.md) 第 2.2 節
 - **如何實現 Use Case？** → 閱讀 [03-Application Layer 實現指南](./03-application-layer-implementation.md) 第 3.2 節
@@ -89,6 +115,7 @@ internal/                        ← 實際代碼（Code）
 - **如何配置依賴注入？** → 閱讀 [06-依賴注入配置](./06-dependency-injection.md)
 - **如何避免循環依賴？** → 閱讀 [07-包命名規範](./07-package-naming.md) 第 7.3 節
 - **完整的實現範例？** → 閱讀 [08-完整代碼範例](./08-code-examples.md)
+- **生產環境需要注意什麼？** → 閱讀 [09-生產環境保護措施](./09-production-safeguards.md)
 
 ---
 
