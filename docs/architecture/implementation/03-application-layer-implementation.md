@@ -13,9 +13,9 @@
 package points
 
 import (
-    "github.com/yourorg/bar_crm/internal/domain/points"
-    "github.com/yourorg/bar_crm/internal/domain/points/repository"
-    "github.com/yourorg/bar_crm/internal/domain/shared"
+    "github.com/jackyeh168/bar_crm/internal/domain/points"
+    "github.com/jackyeh168/bar_crm/internal/domain/points/repository"
+    "github.com/jackyeh168/bar_crm/internal/domain/shared"
 )
 
 // EarnPointsCommand 輸入命令
@@ -108,10 +108,10 @@ func (uc *EarnPointsUseCase) Execute(cmd EarnPointsCommand) (*EarnPointsResult, 
 
 ### 1.2 Use Case 設計原則
 
-- ✅ **薄薄一層**: 只做協調，不包含業務邏輯
-- ✅ **事務管理**: Application Layer 管理事務邊界
-- ✅ **依賴接口**: 依賴 Repository 接口，非實現
-- ✅ **DTO 轉換**: Application Layer 負責 Entity ↔ DTO
+* ✅ **薄薄一層**: 只做協調，不包含業務邏輯
+* ✅ **事務管理**: Application Layer 管理事務邊界
+* ✅ **依賴接口**: 依賴 Repository 接口，非實現
+* ✅ **DTO 轉換**: Application Layer 負責 Entity ↔ DTO
 
 ## 2. DTO 設計
 
@@ -185,8 +185,8 @@ type VerifiedTransactionDTO struct {
 package points
 
 import (
-    "github.com/yourorg/bar_crm/internal/application/usecases/points"
-    "github.com/yourorg/bar_crm/internal/domain/invoice"
+    "github.com/jackyeh168/bar_crm/internal/application/usecases/points"
+    "github.com/jackyeh168/bar_crm/internal/domain/invoice"
 )
 
 // TransactionVerifiedHandler 處理交易驗證事件
@@ -227,14 +227,14 @@ func (h *TransactionVerifiedHandler) EventType() string {
 ### 4.1 設計目標
 
 **問題**：
-- ❌ 每個 Use Case 都需要手動發布事件（容易遺漏）
-- ❌ Use Case 需要依賴 EventPublisher（增加耦合）
-- ❌ 事件發布邏輯重複出現在每個 Use Case
+* ❌ 每個 Use Case 都需要手動發布事件（容易遺漏）
+* ❌ Use Case 需要依賴 EventPublisher（增加耦合）
+* ❌ 事件發布邏輯重複出現在每個 Use Case
 
 **解決方案**：
-- ✅ 創建 Application Service 統一處理事務和事件發布
-- ✅ Use Case 只關注業務邏輯，無需處理事件
-- ✅ 事務成功後自動發布所有聚合的事件
+* ✅ 創建 Application Service 統一處理事務和事件發布
+* ✅ Use Case 只關注業務邏輯，無需處理事件
+* ✅ 事務成功後自動發布所有聚合的事件
 
 ### 4.2 Application Service 實現
 
@@ -244,7 +244,7 @@ func (h *TransactionVerifiedHandler) EventType() string {
 package service
 
 import (
-    "github.com/yourorg/bar_crm/internal/domain/shared"
+    "github.com/jackyeh168/bar_crm/internal/domain/shared"
 )
 
 // ApplicationService 應用服務
@@ -420,9 +420,9 @@ func (uc *EarnPointsUseCase) Execute(cmd EarnPointsCommand) (*EarnPointsResult, 
 ### 4.4 架構優勢
 
 **職責分離**:
-- ✅ Use Case：純業務邏輯協調
-- ✅ Application Service：事務管理 + 事件發布
-- ✅ Event Bus：事件分發（Infrastructure）
+* ✅ Use Case：純業務邏輯協調
+* ✅ Application Service：事務管理 + 事件發布
+* ✅ Event Bus：事件分發（Infrastructure）
 
 **關鍵改進**:
 1. ✅ Use Case 無需知道 EventPublisher 的存在
@@ -585,8 +585,8 @@ func (uc *DeductPointsUseCase) Execute(cmd DeductPointsCommand) error {
 package points
 
 import (
-    "github.com/yourorg/bar_crm/internal/application/usecases/redemption"
-    "github.com/yourorg/bar_crm/internal/domain/shared"
+    "github.com/jackyeh168/bar_crm/internal/application/usecases/redemption"
+    "github.com/jackyeh168/bar_crm/internal/domain/shared"
 )
 
 // PointsDeductedHandler 處理積分扣除事件
@@ -868,9 +868,9 @@ Step 5: 通知用戶（事務 3，可選）
    - 但這通常意味著聚合邊界劃分有問題
 
 **一般建議**：
-- ✅ 優先使用領域事件 + 最終一致性
-- ⚠️ 只在極特殊情況下才考慮多聚合事務
-- ❌ 避免跨 Bounded Context 的事務
+* ✅ 優先使用領域事件 + 最終一致性
+* ⚠️ 只在極特殊情況下才考慮多聚合事務
+* ❌ 避免跨 Bounded Context 的事務
 
 ### 5.9 總結
 
@@ -882,11 +882,11 @@ Step 5: 通知用戶（事務 3，可選）
 5. 使用 Outbox Pattern 保證事件不丟失
 
 **設計優勢**：
-- ✅ 保持聚合邊界清晰
-- ✅ 降低鎖競爭和事務持有時間
-- ✅ 提高系統可擴展性
-- ✅ 簡化錯誤處理
-- ✅ 更好的測試性
+* ✅ 保持聚合邊界清晰
+* ✅ 降低鎖競爭和事務持有時間
+* ✅ 提高系統可擴展性
+* ✅ 簡化錯誤處理
+* ✅ 更好的測試性
 
 **記住**：最終一致性不是缺陷，而是分佈式系統的必然選擇。關鍵是要有完善的事件處理機制（重試、Outbox、監控）來保證數據最終一致。
 

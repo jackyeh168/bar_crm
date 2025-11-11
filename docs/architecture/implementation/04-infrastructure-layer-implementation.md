@@ -40,10 +40,10 @@ package points
 import (
     "errors"
     "gorm.io/gorm"
-    "github.com/yourorg/bar_crm/internal/domain/points"
-    "github.com/yourorg/bar_crm/internal/domain/points/repository"
-    "github.com/yourorg/bar_crm/internal/domain/shared"
-    gormModels "github.com/yourorg/bar_crm/internal/infrastructure/persistence/gorm"
+    "github.com/jackyeh168/bar_crm/internal/domain/points"
+    "github.com/jackyeh168/bar_crm/internal/domain/points/repository"
+    "github.com/jackyeh168/bar_crm/internal/domain/shared"
+    gormModels "github.com/jackyeh168/bar_crm/internal/infrastructure/persistence/gorm"
 )
 
 // GormPointsAccountRepository GORM 實現
@@ -187,7 +187,7 @@ package gorm
 
 import (
     "gorm.io/gorm"
-    "github.com/yourorg/bar_crm/internal/domain/shared"
+    "github.com/jackyeh168/bar_crm/internal/domain/shared"
 )
 
 // gormTransactionContext 實現 TransactionContext 接口
@@ -237,7 +237,7 @@ package linebot
 
 import (
     "github.com/line/line-bot-sdk-go/v8/linebot"
-    "github.com/yourorg/bar_crm/internal/domain/member"
+    "github.com/jackyeh168/bar_crm/internal/domain/member"
 )
 
 // LineUserAdapter LINE 用戶適配器（Anti-Corruption Layer）
@@ -270,11 +270,11 @@ func (a *LineUserAdapter) GetUserProfile(lineUserID string) (*member.Member, err
 ### 4.1 Event Bus 設計原則
 
 **關鍵原則**:
-- ✅ Event Bus 介面定義在 `internal/domain/shared/event.go`
-- ✅ Event Bus 實現在 `internal/infrastructure/messaging/event_bus.go`
-- ✅ Event Handlers 在 `internal/application/events/`
-- ✅ 透過 DI (Dependency Injection) 註冊 handlers 到 Event Bus
-- ❌ Infrastructure Layer 絕不直接依賴 Application Layer 的 Event Handlers
+* ✅ Event Bus 介面定義在 `internal/domain/shared/event.go`
+* ✅ Event Bus 實現在 `internal/infrastructure/messaging/event_bus.go`
+* ✅ Event Handlers 在 `internal/application/events/`
+* ✅ 透過 DI (Dependency Injection) 註冊 handlers 到 Event Bus
+* ❌ Infrastructure Layer 絕不直接依賴 Application Layer 的 Event Handlers
 
 ### 4.2 Event Bus 實現
 
@@ -285,7 +285,7 @@ package messaging
 
 import (
     "sync"
-    "github.com/yourorg/bar_crm/internal/domain/shared"
+    "github.com/jackyeh168/bar_crm/internal/domain/shared"
 )
 
 // InMemoryEventBus 記憶體事件匯流排實現
@@ -350,9 +350,9 @@ package main
 
 import (
     "go.uber.org/fx"
-    "github.com/yourorg/bar_crm/internal/domain/shared"
-    "github.com/yourorg/bar_crm/internal/infrastructure/messaging"
-    "github.com/yourorg/bar_crm/internal/application/events/points"
+    "github.com/jackyeh168/bar_crm/internal/domain/shared"
+    "github.com/jackyeh168/bar_crm/internal/infrastructure/messaging"
+    "github.com/jackyeh168/bar_crm/internal/application/events/points"
 )
 
 func main() {
@@ -508,11 +508,13 @@ func registerEventHandlers(
 **關鍵原則**：
 
 1. **Infrastructure 絕不依賴 Application**
-   ```go
+   
+
+```go
    // ❌ 錯誤：Infrastructure 直接 import Application
    package messaging
 
-   import "github.com/yourorg/bar_crm/internal/application/events"
+   import "github.com/jackyeh168/bar_crm/internal/application/events"
 
    func NewEventBus() *EventBus {
        bus := &EventBus{}
@@ -522,11 +524,13 @@ func registerEventHandlers(
    }
    ```
 
-   ```go
+   
+
+```go
    // ✅ 正確：Infrastructure 只提供技術機制
    package messaging
 
-   import "github.com/yourorg/bar_crm/internal/domain/shared"
+   import "github.com/jackyeh168/bar_crm/internal/domain/shared"
 
    func NewEventBus() *InMemoryEventBus {
        return &InMemoryEventBus{
@@ -544,13 +548,15 @@ func registerEventHandlers(
    ```
 
 2. **Application 依賴 Domain 介面**
-   ```go
+   
+
+```go
    // ✅ 正確：Application 依賴 Domain 定義的介面
    package usecases
 
    import (
-       "github.com/yourorg/bar_crm/internal/domain/shared"
-       "github.com/yourorg/bar_crm/internal/domain/points/repository"
+       "github.com/jackyeh168/bar_crm/internal/domain/shared"
+       "github.com/jackyeh168/bar_crm/internal/domain/points/repository"
    )
 
    type EarnPointsUseCase struct {
@@ -560,19 +566,21 @@ func registerEventHandlers(
    ```
 
 3. **依賴注入在 main.go 連接各層**
-   ```go
+   
+
+```go
    // ✅ 正確：main.go 是唯一知道所有層的地方
    package main
 
    import (
        // Domain Layer
-       "github.com/yourorg/bar_crm/internal/domain/shared"
+       "github.com/jackyeh168/bar_crm/internal/domain/shared"
 
        // Application Layer
-       "github.com/yourorg/bar_crm/internal/application/events/points"
+       "github.com/jackyeh168/bar_crm/internal/application/events/points"
 
        // Infrastructure Layer
-       "github.com/yourorg/bar_crm/internal/infrastructure/messaging"
+       "github.com/jackyeh168/bar_crm/internal/infrastructure/messaging"
    )
 
    func main() {
@@ -647,6 +655,7 @@ func (bus *InMemoryEventBus) Publish(event shared.DomainEvent) error {
 ### 4.5 架構優勢總結
 
 **依賴方向總結**:
+
 ```
 Presentation Layer (HTTP Handlers)
          ↓

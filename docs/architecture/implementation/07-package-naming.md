@@ -7,14 +7,15 @@
 
 ### 1.1 基本規則
 
-- ✅ 小寫字母，無下劃線：`package member`
-- ✅ 單數形式：`package user` 而非 `package users`
-- ✅ 簡短描述性：`package http` 而非 `package httpserver`
-- ❌ 避免泛型名稱：`common`, `util`, `helper`
+* ✅ 小寫字母，無下劃線：`package member`
+* ✅ 單數形式：`package user` 而非 `package users`
+* ✅ 簡短描述性：`package http` 而非 `package httpserver`
+* ❌ 避免泛型名稱：`common`,  `util`,  `helper`
 
 ### 1.2 命名範例
 
 **✅ 正確**:
+
 ```go
 package points      // 積分管理
 package member      // 會員管理
@@ -23,6 +24,7 @@ package linebot     // LINE Bot 適配器
 ```
 
 **❌ 錯誤**:
+
 ```go
 package utils       // 過於泛型
 package pt          // 過於簡寫
@@ -44,14 +46,14 @@ import (
     "gorm.io/gorm"
 
     // 3. 內部包 - Domain Layer
-    "github.com/yourorg/bar_crm/internal/domain/points"
-    "github.com/yourorg/bar_crm/internal/domain/points/repository"
+    "github.com/jackyeh168/bar_crm/internal/domain/points"
+    "github.com/jackyeh168/bar_crm/internal/domain/points/repository"
 
     // 4. 內部包 - Application Layer
-    "github.com/yourorg/bar_crm/internal/application/usecases/points"
+    "github.com/jackyeh168/bar_crm/internal/application/usecases/points"
 
     // 5. 內部包 - Infrastructure Layer
-    gormPkg "github.com/yourorg/bar_crm/internal/infrastructure/persistence/gorm"
+    gormPkg "github.com/jackyeh168/bar_crm/internal/infrastructure/persistence/gorm"
 )
 ```
 
@@ -84,12 +86,14 @@ func (d TransactionDTO) GetAmount() decimal.Decimal {
 ## 4. 包可見性控制
 
 **公開 (Exported)**: 大寫開頭
+
 ```go
 type Member struct {}       // ✅ 公開
 func NewMember() *Member {} // ✅ 公開
 ```
 
 **私有 (Unexported)**: 小寫開頭
+
 ```go
 type memberModel struct {}  // ✅ 私有
 func toModel() *memberModel {} // ✅ 私有

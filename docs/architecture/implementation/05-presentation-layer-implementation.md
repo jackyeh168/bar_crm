@@ -13,8 +13,8 @@ package handlers
 import (
     "net/http"
     "github.com/gin-gonic/gin"
-    "github.com/yourorg/bar_crm/internal/application/usecases/points"
-    "github.com/yourorg/bar_crm/internal/presentation/http/responses"
+    "github.com/jackyeh168/bar_crm/internal/application/usecases/points"
+    "github.com/jackyeh168/bar_crm/internal/presentation/http/responses"
 )
 
 // PointsHandler 積分端點處理器

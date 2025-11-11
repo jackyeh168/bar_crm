@@ -14,11 +14,11 @@ package main
 
 import (
     "go.uber.org/fx"
-    "github.com/yourorg/bar_crm/internal/infrastructure/config"
-    "github.com/yourorg/bar_crm/internal/infrastructure/persistence"
-    "github.com/yourorg/bar_crm/internal/domain/points"
-    "github.com/yourorg/bar_crm/internal/application/usecases"
-    "github.com/yourorg/bar_crm/internal/presentation/http"
+    "github.com/jackyeh168/bar_crm/internal/infrastructure/config"
+    "github.com/jackyeh168/bar_crm/internal/infrastructure/persistence"
+    "github.com/jackyeh168/bar_crm/internal/domain/points"
+    "github.com/jackyeh168/bar_crm/internal/application/usecases"
+    "github.com/jackyeh168/bar_crm/internal/presentation/http"
 )
 
 func main() {
@@ -50,6 +50,7 @@ func main() {
 ### 1.2 模組定義範例
 
 **DatabaseModule**:
+
 ```go
 // internal/infrastructure/persistence/module.go
 package persistence
@@ -70,6 +71,7 @@ func NewGormDB(cfg *config.Config) (*gorm.DB, error) {
 ```
 
 **RepositoryModule**:
+
 ```go
 var RepositoryModule = fx.Module("repositories",
     fx.Provide(
@@ -84,11 +86,11 @@ var RepositoryModule = fx.Module("repositories",
 ## 2. 依賴注入順序
 
 ```
-1. LoggerModule (無依賴)
-2. ConfigModule (依賴 Logger)
-3. DatabaseModule (依賴 Config, Logger)
-4. RepositoryModule (依賴 Database)
-5. RedisModule (依賴 Config, Logger)
+01. LoggerModule (無依賴)
+02. ConfigModule (依賴 Logger)
+03. DatabaseModule (依賴 Config, Logger)
+04. RepositoryModule (依賴 Database)
+05. RedisModule (依賴 Config, Logger)
 6-14. Business Logic Modules
 15. HandlerModule (依賴所有 UseCases)
 16. ServerModule (依賴 Handlers, Config)
@@ -97,6 +99,7 @@ var RepositoryModule = fx.Module("repositories",
 ## 3. 測試時的依賴替換
 
 **測試時使用 Mock**:
+
 ```go
 func setupTestApp(t *testing.T) *fx.App {
     return fx.New(

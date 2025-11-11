@@ -36,23 +36,23 @@
 
 ### 1.2 專案特性
 
-- **專案性質**: 可以追求完美的 Clean Architecture
-- **團隊經驗**: Go 專家級，有 DDD 實戰經驗
-- **Code Review**: 有專人負責
-- **最大風險**: 維護困難、業務邏輯錯誤
-- **技術棧**: PostgreSQL（確定）、Redis（可選）、LINE Bot SDK（已驗證）
+* **專案性質**: 可以追求完美的 Clean Architecture
+* **團隊經驗**: Go 專家級，有 DDD 實戰經驗
+* **Code Review**: 有專人負責
+* **最大風險**: 維護困難、業務邏輯錯誤
+* **技術棧**: PostgreSQL（確定）、Redis（可選）、LINE Bot SDK（已驗證）
 
 ### 1.3 架構審查要點
 
 **Clean Code 專家建議保留的設計**:
-- ✅ 樂觀鎖由聚合控制 version，Repository 驗證 WHERE 條件
-- ✅ Panic 用於不變條件檢查（需 Recovery Middleware）
-- ✅ Reconstruction 驗證（防止數據損壞）
-- ✅ TDD 驅動 Domain Layer 開發
+* ✅ 樂觀鎖由聚合控制 version，Repository 驗證 WHERE 條件
+* ✅ Panic 用於不變條件檢查（需 Recovery Middleware）
+* ✅ Reconstruction 驗證（防止數據損壞）
+* ✅ TDD 驅動 Domain Layer 開發
 
 **需要注意的設計權衡**:
-- ⚠️ 介面隔離：專家認為過度設計，但團隊堅持使用（需確保 DI 配置正確）
-- ⚠️ Unchecked 建構子：微小的效能提升，增加維護成本（需謹慎使用）
+* ⚠️ 介面隔離：專家認為過度設計，但團隊堅持使用（需確保 DI 配置正確）
+* ⚠️ Unchecked 建構子：微小的效能提升，增加維護成本（需謹慎使用）
 
 ---
 
@@ -82,16 +82,17 @@
 
 ### 2.2 DDD 戰術模式
 
-- **Aggregates**: 輕量級設計，無無界集合
-- **Value Objects**: 不可變，建構時驗證
-- **Domain Services**: 無狀態，純函數邏輯
-- **Repository**: 介面在 Domain，實作在 Infrastructure
-- **Domain Events**: 所有狀態變更發布事件
-- **Anti-Corruption Layer**: 隔離外部服務（LINE SDK）
+* **Aggregates**: 輕量級設計，無無界集合
+* **Value Objects**: 不可變，建構時驗證
+* **Domain Services**: 無狀態，純函數邏輯
+* **Repository**: 介面在 Domain，實作在 Infrastructure
+* **Domain Events**: 所有狀態變更發布事件
+* **Anti-Corruption Layer**: 隔離外部服務（LINE SDK）
 
 ### 2.3 錯誤處理策略
 
 **業務錯誤 → 返回 error**:
+
 ```go
 func NewPointsAmount(value int) (PointsAmount, error) {
     if value < 0 {
@@ -102,6 +103,7 @@ func NewPointsAmount(value int) (PointsAmount, error) {
 ```
 
 **不變條件違反 → panic**:
+
 ```go
 func (a *PointsAccount) GetAvailablePoints() PointsAmount {
     if a.usedPoints.Value() > a.earnedPoints.Value() {
@@ -113,9 +115,9 @@ func (a *PointsAccount) GetAvailablePoints() PointsAmount {
 ```
 
 **生產環境保護**:
-- Recovery Middleware 捕獲 panic
-- 記錄日誌 + 發送告警
-- 回傳 500 錯誤，防止服務中斷
+* Recovery Middleware 捕獲 panic
+* 記錄日誌 + 發送告警
+* 回傳 500 錯誤，防止服務中斷
 
 ---
 
@@ -130,6 +132,7 @@ func (a *PointsAccount) GetAvailablePoints() PointsAmount {
 **Day 1-2: PointsAmount 值對象**
 
 **檔案結構**:
+
 ```
 internal/domain/points/
 ├── errors.go
@@ -140,13 +143,14 @@ internal/domain/points/
 **TDD 流程**:
 
 1. 寫測試（`value_objects_test.go`）:
+
 ```go
 package points_test
 
 import (
     "testing"
     "github.com/stretchr/testify/assert"
-    "github.com/yourorg/bar_crm/internal/domain/points"
+    "github.com/jackyeh168/bar_crm/internal/domain/points"
 )
 
 // Test 1: 建構有效的 PointsAmount
@@ -255,6 +259,7 @@ func TestPointsAmount_IsZero_True(t *testing.T) {
 ```
 
 2. 實作（`value_objects.go`）:
+
 ```go
 package points
 
@@ -326,6 +331,7 @@ func (p PointsAmount) IsZero() bool {
 ```
 
 3. 定義錯誤（`errors.go`）:
+
 ```go
 package points
 
@@ -340,6 +346,7 @@ var (
 ```
 
 4. 執行測試:
+
 ```bash
 cd internal/domain/points
 go test -v -cover
@@ -349,14 +356,15 @@ go test -v -cover
 **Day 3: ConversionRate + 其他值對象**
 
 實作：
-- `ConversionRate` - 包含 `CalculatePoints()` 業務邏輯
-- `DateRange` - 包含 `Contains()`, `Overlaps()` 邏輯
-- `AccountID`, `MemberID` - UUID 封裝
-- `PointsSource` - 枚舉類型
+* `ConversionRate` - 包含 `CalculatePoints()` 業務邏輯
+* `DateRange` - 包含 `Contains()`,  `Overlaps()` 邏輯
+* `AccountID`,  `MemberID` - UUID 封裝
+* `PointsSource` - 枚舉類型
 
 **Day 4-5: PointsAccount 聚合根**
 
 **檔案**:
+
 ```
 internal/domain/points/
 ├── account.go
@@ -364,6 +372,7 @@ internal/domain/points/
 ```
 
 **測試重點**:
+
 ```go
 // 命令操作測試
 func TestPointsAccount_EarnPoints_Success(t *testing.T)
@@ -423,15 +432,16 @@ func TestReconstructPointsAccount_InvariantViolation_ReturnsError(t *testing.T) 
 ```
 
 **實作要點**:
-- 所有字段私有
-- 樂觀鎖版本控制（`version` 字段）
-- `GetPreviousVersion()` 方法（供 Repository 使用）
-- 領域事件收集（`events []shared.DomainEvent`）
-- `ReconstructPointsAccount()` 驗證不變條件
+* 所有字段私有
+* 樂觀鎖版本控制（`version` 字段）
+* `GetPreviousVersion()` 方法（供 Repository 使用）
+* 領域事件收集（`events []shared.DomainEvent`）
+* `ReconstructPointsAccount()` 驗證不變條件
 
 **Day 6: ConversionRule 聚合根**
 
 **檔案**:
+
 ```
 internal/domain/points/
 ├── conversion_rule.go
@@ -439,13 +449,14 @@ internal/domain/points/
 ```
 
 **測試重點**:
-- 日期範圍重疊檢查
-- 轉換率業務規則驗證
-- 聚合重建驗證
+* 日期範圍重疊檢查
+* 轉換率業務規則驗證
+* 聚合重建驗證
 
 **Day 7: Domain Services**
 
 **檔案**:
+
 ```
 internal/domain/points/
 ├── calculation_service.go
@@ -455,16 +466,17 @@ internal/domain/points/
 ```
 
 **實作重點**:
-- 策略模式（`PointsCalculationStrategy`）
-- 組合計算器（`CompositePointsCalculator`）
-- 基礎積分策略（`BasePointsCalculator`）
-- 問卷獎勵策略（`SurveyBonusCalculator`）
+* 策略模式（`PointsCalculationStrategy`）
+* 組合計算器（`CompositePointsCalculator`）
+* 基礎積分策略（`BasePointsCalculator`）
+* 問卷獎勵策略（`SurveyBonusCalculator`）
 
 #### Week 2: Repository Interfaces + Domain Events
 
 **Day 8-9: Repository 介面**
 
 **檔案**:
+
 ```
 internal/domain/points/repository/
 ├── account_repository.go
@@ -472,6 +484,7 @@ internal/domain/points/repository/
 ```
 
 **介面隔離設計**:
+
 ```go
 // account_repository.go
 package repository
@@ -513,6 +526,7 @@ var (
 **Day 10: 領域事件**
 
 **檔案**:
+
 ```
 internal/domain/points/
 ├── events.go
@@ -524,12 +538,13 @@ internal/domain/shared/
 ```
 
 **實作要點**:
-- 所有事件實作 `shared.DomainEvent` 介面
-- 事件不可變
-- 事件名稱使用過去式（`PointsEarned`, `PointsDeducted`）
-- 事件包含完整信息
+* 所有事件實作 `shared.DomainEvent` 介面
+* 事件不可變
+* 事件名稱使用過去式（`PointsEarned`,  `PointsDeducted`）
+* 事件包含完整信息
 
 **檢查點（Week 2 結束）**:
+
 ```bash
 ✅ Points Context 完整的 Domain Layer
 ✅ 100% 的單元測試覆蓋率（Domain 層）
@@ -556,6 +571,7 @@ coverage: 95.0% of statements
 #### Week 3: Member + Invoice Context
 
 **Member Context 結構**:
+
 ```
 internal/domain/member/
 ├── member.go                    # Member 聚合根
@@ -572,6 +588,7 @@ internal/domain/member/
 ```
 
 **PhoneNumber 值對象測試重點**:
+
 ```go
 func TestNewPhoneNumber_ValidFormat_Success(t *testing.T) {
     // 測試台灣手機格式：09XXXXXXXX
@@ -587,6 +604,7 @@ func TestPhoneNumber_Equals(t *testing.T) {
 ```
 
 **Invoice Context 結構**:
+
 ```
 internal/domain/invoice/
 ├── transaction.go               # InvoiceTransaction 聚合根
@@ -604,6 +622,7 @@ internal/domain/invoice/
 ```
 
 **InvoiceTransaction 測試重點**:
+
 ```go
 func TestInvoiceTransaction_Verify_Success(t *testing.T)
 func TestInvoiceTransaction_Verify_AlreadyVerified_ReturnsError(t *testing.T)
@@ -612,6 +631,7 @@ func TestInvoiceTransaction_IsExpired_60DaysRule(t *testing.T)
 ```
 
 **檢查點（Week 3 結束）**:
+
 ```bash
 ✅ Member Context Domain Layer 完成
 ✅ Invoice Context Domain Layer 完成
@@ -624,6 +644,7 @@ func TestInvoiceTransaction_IsExpired_60DaysRule(t *testing.T)
 ### Phase 3: Domain Layer - Survey + External Context（Week 4）
 
 **Survey Context 結構**:
+
 ```
 internal/domain/survey/
 ├── survey.go                    # Survey 聚合根（含巢狀 Question 實體）
@@ -640,6 +661,7 @@ internal/domain/survey/
 ```
 
 **Survey 聚合根測試重點**:
+
 ```go
 func TestSurvey_AddQuestion_Success(t *testing.T)
 func TestSurvey_Activate_OnlyOneActiveSurvey_Rule(t *testing.T)
@@ -650,6 +672,7 @@ func TestReconstructSurvey_NoQuestions_ReturnsError(t *testing.T) {
 ```
 
 **External Context** (iChef 整合):
+
 ```
 internal/domain/external/
 ├── import_batch.go              # ImportBatch 聚合根
@@ -666,6 +689,7 @@ internal/domain/external/
 ```
 
 **檢查點（Week 4 結束）**:
+
 ```bash
 ✅ Survey Context Domain Layer 完成
 ✅ External Context Domain Layer 完成
@@ -677,6 +701,7 @@ internal/domain/external/
 ### Phase 4: Domain Layer - Identity + Notification Context（Week 5）
 
 **Identity Context 結構**:
+
 ```
 internal/domain/identity/
 ├── admin_user.go                # AdminUser 聚合根
@@ -690,6 +715,7 @@ internal/domain/identity/
 ```
 
 **Role 值對象測試**:
+
 ```go
 func TestRole_HasPermission_AdminRole(t *testing.T)
 func TestRole_HasPermission_UserRole(t *testing.T)
@@ -697,6 +723,7 @@ func TestRole_HasPermission_GuestRole(t *testing.T)
 ```
 
 **Notification Context 結構**:
+
 ```
 internal/domain/notification/
 ├── notification.go              # Notification 聚合根
@@ -710,6 +737,7 @@ internal/domain/notification/
 ```
 
 **檢查點（Week 5 結束）**:
+
 ```bash
 ✅ Identity Context Domain Layer 完成
 ✅ Notification Context Domain Layer 完成
@@ -729,6 +757,7 @@ internal/domain/notification/
 #### Week 6: Use Cases (TDD with Mocks)
 
 **Points Use Cases**:
+
 ```
 internal/application/usecases/points/
 ├── earn_points.go
@@ -745,6 +774,7 @@ internal/application/usecases/points/
 ```
 
 **EarnPointsUseCase 測試範例**:
+
 ```go
 package points_test
 
@@ -752,9 +782,9 @@ import (
     "testing"
     "github.com/stretchr/testify/assert"
     "github.com/stretchr/testify/mock"
-    "github.com/yourorg/bar_crm/internal/domain/points"
-    "github.com/yourorg/bar_crm/internal/domain/points/repository"
-    "github.com/yourorg/bar_crm/internal/application/usecases/points"
+    "github.com/jackyeh168/bar_crm/internal/domain/points"
+    "github.com/jackyeh168/bar_crm/internal/domain/points/repository"
+    "github.com/jackyeh168/bar_crm/internal/application/usecases/points"
 )
 
 // MockPointsAccountReader Mock 讀取介面
@@ -873,6 +903,7 @@ func TestEarnPointsUseCase_Execute_NegativeAmount_ReturnsError(t *testing.T) {
 ```
 
 **其他 Context 的 Use Cases**:
+
 ```
 internal/application/usecases/
 ├── member/
@@ -899,6 +930,7 @@ internal/application/usecases/
 #### Week 7: DTOs + Event Handlers
 
 **DTOs**:
+
 ```
 internal/application/dto/
 ├── member_dto.go
@@ -908,13 +940,14 @@ internal/application/dto/
 ```
 
 **TransactionDTO 實作 Domain 介面**（解耦 Application 和 Domain）:
+
 ```go
 package dto
 
 import (
     "time"
     "github.com/shopspring/decimal"
-    "github.com/yourorg/bar_crm/internal/domain/points"
+    "github.com/jackyeh168/bar_crm/internal/domain/points"
 )
 
 // TransactionDTO 交易 DTO
@@ -942,6 +975,7 @@ func (d TransactionDTO) HasCompletedSurvey() bool {
 ```
 
 **Event Handlers**:
+
 ```
 internal/application/events/
 ├── points/
@@ -956,13 +990,14 @@ internal/application/events/
 ```
 
 **TransactionVerifiedHandler 範例**:
+
 ```go
 package points
 
 import (
-    "github.com/yourorg/bar_crm/internal/domain/shared"
-    "github.com/yourorg/bar_crm/internal/domain/invoice"
-    "github.com/yourorg/bar_crm/internal/application/usecases/points"
+    "github.com/jackyeh168/bar_crm/internal/domain/shared"
+    "github.com/jackyeh168/bar_crm/internal/domain/invoice"
+    "github.com/jackyeh168/bar_crm/internal/application/usecases/points"
 )
 
 // TransactionVerifiedHandler 處理 TransactionVerified 事件
@@ -1006,6 +1041,7 @@ func (h *TransactionVerifiedHandler) EventType() string {
 ```
 
 **檢查點（Week 7 結束）**:
+
 ```bash
 ✅ 所有 Use Cases 實作完成
 ✅ Use Case 測試覆蓋率 80%+（使用 Mock）
@@ -1231,7 +1267,7 @@ package gorm
 
 import (
     "gorm.io/gorm"
-    "github.com/yourorg/bar_crm/internal/domain/shared"
+    "github.com/jackyeh168/bar_crm/internal/domain/shared"
 )
 
 // GormTransactionContext GORM 事務上下文
@@ -1280,10 +1316,10 @@ import (
     "fmt"
     "gorm.io/gorm"
 
-    "github.com/yourorg/bar_crm/internal/domain/points"
-    "github.com/yourorg/bar_crm/internal/domain/points/repository"
-    "github.com/yourorg/bar_crm/internal/domain/shared"
-    gorminfra "github.com/yourorg/bar_crm/internal/infrastructure/persistence/gorm"
+    "github.com/jackyeh168/bar_crm/internal/domain/points"
+    "github.com/jackyeh168/bar_crm/internal/domain/points/repository"
+    "github.com/jackyeh168/bar_crm/internal/domain/shared"
+    gorminfra "github.com/jackyeh168/bar_crm/internal/infrastructure/persistence/gorm"
 )
 
 // GormPointsAccountRepository GORM 積分帳戶倉儲
@@ -1543,10 +1579,10 @@ import (
     "gorm.io/driver/sqlite"
     "gorm.io/gorm"
 
-    "github.com/yourorg/bar_crm/internal/domain/points"
-    "github.com/yourorg/bar_crm/internal/domain/points/repository"
-    gorminfra "github.com/yourorg/bar_crm/internal/infrastructure/persistence/gorm"
-    pointsrepo "github.com/yourorg/bar_crm/internal/infrastructure/persistence/points"
+    "github.com/jackyeh168/bar_crm/internal/domain/points"
+    "github.com/jackyeh168/bar_crm/internal/domain/points/repository"
+    gorminfra "github.com/jackyeh168/bar_crm/internal/infrastructure/persistence/gorm"
+    pointsrepo "github.com/jackyeh168/bar_crm/internal/infrastructure/persistence/points"
 )
 
 // RepositoryTestSuite 倉儲測試套件
@@ -1701,6 +1737,7 @@ func pointsAmount(value int) points.PointsAmount {
 ```
 
 **執行 Integration Tests**:
+
 ```bash
 cd internal/infrastructure/persistence/points
 go test -v -cover
@@ -1718,6 +1755,7 @@ coverage: 85.0% of statements
 ```
 
 **檢查點（Week 8 結束）**:
+
 ```bash
 ✅ GORM Models 全部定義
 ✅ Transaction Context 實作完成
@@ -1734,6 +1772,7 @@ coverage: 85.0% of statements
 #### External Adapters
 
 **LINE Bot Adapter**（Anti-Corruption Layer）:
+
 ```
 internal/infrastructure/external/linebot/
 ├── adapter.go
@@ -1742,6 +1781,7 @@ internal/infrastructure/external/linebot/
 ```
 
 **Contract Tests 範例**:
+
 ```go
 package linebot_test
 
@@ -1749,7 +1789,7 @@ import (
     "testing"
     "net/http/httptest"
     "github.com/stretchr/testify/assert"
-    "github.com/yourorg/bar_crm/internal/infrastructure/external/linebot"
+    "github.com/jackyeh168/bar_crm/internal/infrastructure/external/linebot"
 )
 
 // TestLineBotAdapter_GetProfile_Contract 測試 LINE API 契約
@@ -1807,6 +1847,7 @@ func TestLineBotAdapter_GetProfile_APIChanged(t *testing.T) {
 ```
 
 **Event Bus 實作**:
+
 ```
 internal/infrastructure/messaging/
 ├── event_bus.go
@@ -1816,6 +1857,7 @@ internal/infrastructure/messaging/
 ```
 
 **檢查點（Week 9 結束）**:
+
 ```bash
 ✅ LINE Bot Adapter 的 Contract Tests 通過
 ✅ Google OAuth Adapter 實作完成
@@ -1831,6 +1873,7 @@ internal/infrastructure/messaging/
 #### HTTP Handlers + Recovery Middleware
 
 **Recovery Middleware**（關鍵！）:
+
 ```go
 // internal/presentation/http/middleware/recovery.go
 package middleware
@@ -1876,6 +1919,7 @@ func RecoveryMiddleware(logger *zap.Logger) gin.HandlerFunc {
 ```
 
 **LINE Bot Webhook Handlers**:
+
 ```
 internal/presentation/linebot/
 ├── webhook_handler.go
@@ -1884,6 +1928,7 @@ internal/presentation/linebot/
 ```
 
 **檢查點（Week 10 結束）**:
+
 ```bash
 ✅ Recovery Middleware 實作並測試
 ✅ HTTP Handlers 全部完成
@@ -1905,6 +1950,7 @@ test/e2e/
 ```
 
 **E2E Test 範例**:
+
 ```go
 package e2e_test
 
@@ -1945,6 +1991,7 @@ func TestScanAndEarnPoints_E2E(t *testing.T) {
 ```
 
 **檢查點（Week 11 結束）**:
+
 ```bash
 ✅ E2E Tests 覆蓋關鍵流程
 ✅ 整體測試覆蓋率 80%+
@@ -2036,6 +2083,7 @@ jobs:
 ```
 
 **檢查點（Week 12 結束）**:
+
 ```bash
 ✅ CI/CD Pipeline 運作正常
 ✅ 所有測試在 CI 中通過
@@ -2130,12 +2178,12 @@ go test ./test/e2e/... -v
 
 ### 5.2 品質指標
 
-- **程式碼覆蓋率**: 整體 80%+
-- **Domain Layer 覆蓋率**: 90%+
-- **單元測試執行時間**: < 5 秒
-- **Integration 測試執行時間**: < 30 秒
-- **E2E 測試執行時間**: < 2 分鐘
-- **CI 總執行時間**: < 5 分鐘
+* **程式碼覆蓋率**: 整體 80%+
+* **Domain Layer 覆蓋率**: 90%+
+* **單元測試執行時間**: < 5 秒
+* **Integration 測試執行時間**: < 30 秒
+* **E2E 測試執行時間**: < 2 分鐘
+* **CI 總執行時間**: < 5 分鐘
 
 ### 5.3 程式碼品質檢查
 
@@ -2164,7 +2212,7 @@ go mod graph | grep internal
 ```bash
 # 1. 初始化 Go Module
 cd /Users/apple/Documents/code/golang/bar_crm
-go mod init github.com/yourorg/bar_crm
+go mod init github.com/jackyeh168/bar_crm
 
 # 2. 安裝測試依賴
 go get github.com/stretchr/testify/assert
@@ -2201,7 +2249,7 @@ touch internal/domain/points/value_objects_test.go
 
 **Step 4: 寫第一個測試（TDD）**
 
-開啟 `internal/domain/points/value_objects_test.go`，寫第一個測試：
+開啟 `internal/domain/points/value_objects_test.go` ，寫第一個測試：
 
 ```go
 package points_test
@@ -2209,7 +2257,7 @@ package points_test
 import (
     "testing"
     "github.com/stretchr/testify/assert"
-    "github.com/yourorg/bar_crm/internal/domain/points"
+    "github.com/jackyeh168/bar_crm/internal/domain/points"
 )
 
 func TestNewPointsAmount_ValidValue_ReturnsPointsAmount(t *testing.T) {
@@ -2236,7 +2284,7 @@ go test -v
 
 **Step 6: 實作（Green）**
 
-開啟 `internal/domain/points/value_objects.go`，實作：
+開啟 `internal/domain/points/value_objects.go` ，實作：
 
 ```go
 package points
@@ -2257,7 +2305,7 @@ func (p PointsAmount) Value() int {
 }
 ```
 
-開啟 `internal/domain/points/errors.go`：
+開啟 `internal/domain/points/errors.go` ：
 
 ```go
 package points
@@ -2276,9 +2324,9 @@ go test -v
 ```
 
 **Day 1 目標達成**:
-- ✅ 專案結構建立
-- ✅ 第一個測試通過
-- ✅ TDD 流程驗證
+* ✅ 專案結構建立
+* ✅ 第一個測試通過
+* ✅ TDD 流程驗證
 
 ---
 
@@ -2317,40 +2365,40 @@ go test -v
 ### A. Code Review 檢查清單
 
 **Domain Layer**:
-- [ ] 所有字段私有
-- [ ] 通過構造函數創建
-- [ ] 狀態變更通過方法（Tell, Don't Ask）
-- [ ] 不變性保護（業務規則檢查）
-- [ ] 發布領域事件
-- [ ] 輕量級設計（無無界集合）
-- [ ] 版本控制（樂觀鎖）
-- [ ] Reconstruction 驗證資料完整性
+* [ ] 所有字段私有
+* [ ] 通過構造函數創建
+* [ ] 狀態變更通過方法（Tell, Don't Ask）
+* [ ] 不變性保護（業務規則檢查）
+* [ ] 發布領域事件
+* [ ] 輕量級設計（無無界集合）
+* [ ] 版本控制（樂觀鎖）
+* [ ] Reconstruction 驗證資料完整性
 
 **Application Layer**:
-- [ ] Use Case 單一職責
-- [ ] 使用 Transaction Context
-- [ ] 透傳 Domain 錯誤
-- [ ] DTOs 實作 Domain 介面
-- [ ] Event Handlers 正確註冊
+* [ ] Use Case 單一職責
+* [ ] 使用 Transaction Context
+* [ ] 透傳 Domain 錯誤
+* [ ] DTOs 實作 Domain 介面
+* [ ] Event Handlers 正確註冊
 
 **Infrastructure Layer**:
-- [ ] Repository WHERE 條件驗證樂觀鎖
-- [ ] GORM Model ↔ Domain Entity 正確轉換
-- [ ] 錯誤轉換為 Domain 錯誤
-- [ ] Integration Tests 覆蓋關鍵場景
+* [ ] Repository WHERE 條件驗證樂觀鎖
+* [ ] GORM Model ↔ Domain Entity 正確轉換
+* [ ] 錯誤轉換為 Domain 錯誤
+* [ ] Integration Tests 覆蓋關鍵場景
 
 **Presentation Layer**:
-- [ ] Recovery Middleware 啟用
-- [ ] 錯誤映射為正確的 HTTP 狀態碼
-- [ ] 日誌記錄完整
-- [ ] 沒有業務邏輯
+* [ ] Recovery Middleware 啟用
+* [ ] 錯誤映射為正確的 HTTP 狀態碼
+* [ ] 日誌記錄完整
+* [ ] 沒有業務邏輯
 
 ### B. 參考資料
 
-- [Clean Architecture - Robert C. Martin](https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html)
-- [Domain-Driven Design - Eric Evans](https://www.domainlanguage.com/ddd/)
-- [Go Code Review Comments](https://github.com/golang/go/wiki/CodeReviewComments)
-- [Effective Go](https://go.dev/doc/effective_go)
+* [Clean Architecture - Robert C. Martin](https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html)
+* [Domain-Driven Design - Eric Evans](https://www.domainlanguage.com/ddd/)
+* [Go Code Review Comments](https://github.com/golang/go/wiki/CodeReviewComments)
+* [Effective Go](https://go.dev/doc/effective_go)
 
 ---
 

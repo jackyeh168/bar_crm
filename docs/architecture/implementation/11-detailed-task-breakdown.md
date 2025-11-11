@@ -18,11 +18,11 @@
 
 ### 任務標記說明
 
-- 📝 **編寫測試**
-- 💻 **編寫實作**
-- ✅ **驗證/檢查**
-- 🔧 **重構**
-- 📚 **文檔**
+* 📝 **編寫測試**
+* 💻 **編寫實作**
+* ✅ **驗證/檢查**
+* 🔧 **重構**
+* 📚 **文檔**
 
 ---
 
@@ -31,8 +31,9 @@
 ### Day 1: 專案初始化 + PointsAmount 值對象
 
 #### 時間分配
-- 上午 (3h): 專案設置 + 環境驗證
-- 下午 (5h): PointsAmount 值對象 TDD
+
+* 上午 (3h): 專案設置 + 環境驗證
+* 下午 (5h): PointsAmount 值對象 TDD
 
 ---
 
@@ -43,7 +44,7 @@
 ```bash
 # Step 1.1.1: 初始化 Go Module (5 min)
 cd /Users/apple/Documents/code/golang/bar_crm
-go mod init github.com/yourorg/bar_crm
+go mod init github.com/jackyeh168/bar_crm
 
 # Step 1.1.2: 安裝核心依賴 (10 min)
 go get github.com/stretchr/testify@v1.8.4
@@ -164,10 +165,10 @@ go version
 ```
 
 **完成標準**:
-- ✅ `go.mod` 檔案存在
-- ✅ 所有目錄已建立
-- ✅ `make test` 可以執行（即使沒有測試）
-- ✅ Git 有初始 commit
+* ✅ `go.mod` 檔案存在
+* ✅ 所有目錄已建立
+* ✅ `make test` 可以執行（即使沒有測試）
+* ✅ Git 有初始 commit
 
 **預估時間**: 1 小時
 
@@ -233,8 +234,8 @@ EOF
 ```
 
 **完成標準**:
-- ✅ 兩個檔案已建立
-- ✅ `go build ./internal/domain/shared` 無錯誤
+* ✅ 兩個檔案已建立
+* ✅ `go build ./internal/domain/shared` 無錯誤
 
 **預估時間**: 30 分鐘
 
@@ -293,7 +294,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/yourorg/bar_crm/internal/domain/points"
+	"github.com/jackyeh168/bar_crm/internal/domain/points"
 )
 
 // Test 1: 建構有效的 PointsAmount
@@ -392,6 +393,7 @@ func (p PointsAmount) IsZero() bool {
 ```
 
 執行測試：
+
 ```bash
 go test -v -run TestNewPointsAmount
 ```
@@ -447,6 +449,7 @@ func (p PointsAmount) Add(other PointsAmount) PointsAmount {
 ```
 
 執行測試：
+
 ```bash
 go test -v -run TestPointsAmount_Add
 ```
@@ -517,6 +520,7 @@ func (p PointsAmount) Subtract(other PointsAmount) (PointsAmount, error) {
 ```
 
 執行測試：
+
 ```bash
 go test -v -run TestPointsAmount_Subtract
 ```
@@ -577,6 +581,7 @@ func (p PointsAmount) Equals(other PointsAmount) bool {
 ```
 
 執行測試：
+
 ```bash
 go test -v
 ```
@@ -629,17 +634,17 @@ go tool cover -func=coverage.out
 ```
 
 **完成標準**:
-- ✅ 13 個測試全部通過
-- ✅ PointsAmount 覆蓋率 100%
-- ✅ 所有測試執行時間 < 1 秒
-- ✅ `go build ./internal/domain/points` 無錯誤
-- ✅ 無 linter 警告
+* ✅ 13 個測試全部通過
+* ✅ PointsAmount 覆蓋率 100%
+* ✅ 所有測試執行時間 < 1 秒
+* ✅ `go build ./internal/domain/points` 無錯誤
+* ✅ 無 linter 警告
 
 **Day 1 產出**:
-- ✅ 專案基礎結構
-- ✅ Shared Domain 介面
-- ✅ PointsAmount 值對象（完整實作 + 測試）
-- ✅ 錯誤定義
+* ✅ 專案基礎結構
+* ✅ Shared Domain 介面
+* ✅ PointsAmount 值對象（完整實作 + 測試）
+* ✅ 錯誤定義
 
 **預估總時間**: 8 小時
 
@@ -648,8 +653,9 @@ go tool cover -func=coverage.out
 ### Day 2: ConversionRate + AccountID + MemberID 值對象
 
 #### 時間分配
-- 上午 (4h): ConversionRate 值對象 TDD
-- 下午 (4h): AccountID + MemberID 值對象 TDD
+
+* 上午 (4h): ConversionRate 值對象 TDD
+* 下午 (4h): AccountID + MemberID 值對象 TDD
 
 ---
 
@@ -748,6 +754,7 @@ func (r ConversionRate) Equals(other ConversionRate) bool {
 ```
 
 執行測試：
+
 ```bash
 go test -v -run TestNewConversionRate
 ```
@@ -870,6 +877,7 @@ func (r ConversionRate) CalculatePoints(amount decimal.Decimal) PointsAmount {
 ```
 
 執行測試：
+
 ```bash
 go test -v -run TestConversionRate_CalculatePoints
 ```
@@ -895,6 +903,7 @@ func TestConversionRate_Equals(t *testing.T) {
 ```
 
 執行測試：
+
 ```bash
 go test -v -run TestConversionRate
 ```
@@ -1040,6 +1049,7 @@ func (id AccountID) IsEmpty() bool {
 ```
 
 執行測試：
+
 ```bash
 go test -v -run TestAccountID
 ```
@@ -1146,6 +1156,7 @@ func (id MemberID) IsEmpty() bool {
 ```
 
 執行測試：
+
 ```bash
 go test -v -run TestMemberID
 ```
@@ -1170,16 +1181,16 @@ go tool cover -func=coverage.out
 ```
 
 **完成標準**:
-- ✅ 27 個測試全部通過
-- ✅ 值對象覆蓋率 100%
-- ✅ 所有測試執行時間 < 1 秒
-- ✅ `go build ./internal/domain/points` 無錯誤
+* ✅ 27 個測試全部通過
+* ✅ 值對象覆蓋率 100%
+* ✅ 所有測試執行時間 < 1 秒
+* ✅ `go build ./internal/domain/points` 無錯誤
 
 **Day 2 產出**:
-- ✅ ConversionRate 值對象（含積分計算邏輯）
-- ✅ AccountID 值對象（UUID 封裝）
-- ✅ MemberID 值對象
-- ✅ 完整測試覆蓋
+* ✅ ConversionRate 值對象（含積分計算邏輯）
+* ✅ AccountID 值對象（UUID 封裝）
+* ✅ MemberID 值對象
+* ✅ 完整測試覆蓋
 
 **預估總時間**: 8 小時
 
@@ -1188,8 +1199,9 @@ go tool cover -func=coverage.out
 ### Day 3: DateRange + PointsSource 值對象
 
 #### 時間分配
-- 上午 (3h): DateRange 值對象 TDD
-- 下午 (3h): PointsSource 枚舉 + 重構
+
+* 上午 (3h): DateRange 值對象 TDD
+* 下午 (3h): PointsSource 枚舉 + 重構
 
 ---
 
@@ -1292,6 +1304,7 @@ func (dr DateRange) EndDate() time.Time {
 ```
 
 執行測試：
+
 ```bash
 go test -v -run TestNewDateRange
 ```
@@ -1394,6 +1407,7 @@ func (dr DateRange) Contains(date time.Time) bool {
 ```
 
 執行測試：
+
 ```bash
 go test -v -run TestDateRange_Contains
 ```
@@ -1515,6 +1529,7 @@ func (dr DateRange) Overlaps(other DateRange) bool {
 ```
 
 執行測試：
+
 ```bash
 go test -v -run TestDateRange_Overlaps
 ```
@@ -1609,6 +1624,7 @@ func (s PointsSource) String() string {
 ```
 
 執行測試：
+
 ```bash
 go test -v -run TestPointsSource
 ```
@@ -1698,16 +1714,16 @@ go tool cover -func=coverage.out
 ```
 
 **完成標準**:
-- ✅ 42 個測試全部通過
-- ✅ 值對象覆蓋率 100%
-- ✅ 所有測試執行時間 < 1 秒
-- ✅ 無 linter 警告
-- ✅ 所有公開 API 有 godoc 註釋
+* ✅ 42 個測試全部通過
+* ✅ 值對象覆蓋率 100%
+* ✅ 所有測試執行時間 < 1 秒
+* ✅ 無 linter 警告
+* ✅ 所有公開 API 有 godoc 註釋
 
 **Day 3 產出**:
-- ✅ DateRange 值對象（含 Contains 和 Overlaps 邏輯）
-- ✅ PointsSource 枚舉
-- ✅ 程式碼重構與文檔完善
+* ✅ DateRange 值對象（含 Contains 和 Overlaps 邏輯）
+* ✅ PointsSource 枚舉
+* ✅ 程式碼重構與文檔完善
 
 **預估總時間**: 7 小時
 
@@ -1716,8 +1732,9 @@ go tool cover -func=coverage.out
 ### Day 4: PointsAccount 聚合根 - Part 1（建構與基本操作）
 
 #### 時間分配
-- 上午 (4h): PointsAccount 結構 + 建構函數
-- 下午 (4h): EarnPoints 命令方法
+
+* 上午 (4h): PointsAccount 結構 + 建構函數
+* 下午 (4h): EarnPoints 命令方法
 
 ---
 
@@ -1742,7 +1759,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/yourorg/bar_crm/internal/domain/points"
+	"github.com/jackyeh168/bar_crm/internal/domain/points"
 )
 
 // === PointsAccount 建構測試 ===
@@ -1824,7 +1841,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/yourorg/bar_crm/internal/domain/shared"
+	"github.com/jackyeh168/bar_crm/internal/domain/shared"
 )
 
 // PointsAccount 積分帳戶聚合根
@@ -1946,7 +1963,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/yourorg/bar_crm/internal/domain/shared"
+	"github.com/jackyeh168/bar_crm/internal/domain/shared"
 )
 
 // --- PointsAccountCreated 事件 ---
@@ -2122,6 +2139,7 @@ func TestPointsAccount_EarnPoints_Accumulates(t *testing.T) {
 ```
 
 執行測試（應該失敗）：
+
 ```bash
 go test -v -run TestPointsAccount_EarnPoints
 ```
@@ -2245,6 +2263,7 @@ func (e PointsEarned) Description() string {
 ```
 
 執行測試（應該通過）：
+
 ```bash
 go test -v -run TestPointsAccount_EarnPoints
 ```
@@ -2269,17 +2288,17 @@ go tool cover -func=coverage.out
 ```
 
 **完成標準**:
-- ✅ 51 個測試全部通過
-- ✅ PointsAccount 基本功能測試覆蓋率 95%+
-- ✅ EarnPoints 方法完整實作
-- ✅ 領域事件正常發布
+* ✅ 51 個測試全部通過
+* ✅ PointsAccount 基本功能測試覆蓋率 95%+
+* ✅ EarnPoints 方法完整實作
+* ✅ 領域事件正常發布
 
 **Day 4 產出**:
-- ✅ PointsAccount 聚合根基本結構
-- ✅ NewPointsAccount 建構函數
-- ✅ EarnPoints 命令方法
-- ✅ PointsAccountCreated 事件
-- ✅ PointsEarned 事件
+* ✅ PointsAccount 聚合根基本結構
+* ✅ NewPointsAccount 建構函數
+* ✅ EarnPoints 命令方法
+* ✅ PointsAccountCreated 事件
+* ✅ PointsEarned 事件
 
 **預估總時間**: 8 小時
 
@@ -2288,8 +2307,9 @@ go tool cover -func=coverage.out
 ### Day 5: PointsAccount 聚合根 - Part 2（進階操作與不變條件）
 
 #### 時間分配
-- 上午 (4h): DeductPoints + GetAvailablePoints
-- 下午 (4h): RecalculatePoints + ReconstructPointsAccount
+
+* 上午 (4h): DeductPoints + GetAvailablePoints
+* 下午 (4h): RecalculatePoints + ReconstructPointsAccount
 
 ---
 
@@ -2395,6 +2415,7 @@ func TestPointsAccount_DeductPoints_NegativeAmount_ReturnsError(t *testing.T) {
 ```
 
 執行測試：
+
 ```bash
 go test -v -run TestPointsAccount_DeductPoints
 ```
@@ -2511,6 +2532,7 @@ var (
 ```
 
 執行測試：
+
 ```bash
 go test -v -run TestPointsAccount_DeductPoints
 ```
@@ -2593,6 +2615,7 @@ func TestPointsAccount_GetAvailablePoints_InvariantViolation_Panics(t *testing.T
 ```
 
 執行測試：
+
 ```bash
 go test -v -run TestPointsAccount_GetAvailablePoints
 ```
@@ -2619,6 +2642,7 @@ func (a *PointsAccount) GetAvailablePoints() PointsAmount {
 ```
 
 執行測試：
+
 ```bash
 go test -v -run TestPointsAccount_GetAvailablePoints
 ```
@@ -2650,6 +2674,7 @@ type PointsCalculationService interface {
 ```
 
 新增 import：
+
 ```go
 import (
 	// ... 其他 imports
@@ -2768,6 +2793,7 @@ var (
 ```
 
 執行測試：
+
 ```bash
 go test -v -run TestPointsAccount_RecalculatePoints
 ```
@@ -2882,6 +2908,7 @@ func (e PointsRecalculated) NewPoints() int {
 ```
 
 執行測試：
+
 ```bash
 go test -v -run TestPointsAccount_RecalculatePoints
 ```
@@ -3019,6 +3046,7 @@ func TestReconstructPointsAccount_InvalidVersion_ReturnsError(t *testing.T) {
 ```
 
 執行測試：
+
 ```bash
 go test -v -run TestReconstructPointsAccount
 ```
@@ -3080,6 +3108,7 @@ func ReconstructPointsAccount(
 ```
 
 執行測試：
+
 ```bash
 go test -v -run TestReconstructPointsAccount
 ```
@@ -3104,18 +3133,18 @@ go tool cover -func=coverage.out
 ```
 
 **完成標準**:
-- ✅ 66 個測試全部通過
-- ✅ PointsAccount 聚合根覆蓋率 95%+
-- ✅ 所有命令方法實作完成
-- ✅ ReconstructPointsAccount 驗證資料完整性
+* ✅ 66 個測試全部通過
+* ✅ PointsAccount 聚合根覆蓋率 95%+
+* ✅ 所有命令方法實作完成
+* ✅ ReconstructPointsAccount 驗證資料完整性
 
 **Day 5 產出**:
-- ✅ DeductPoints 命令方法
-- ✅ GetAvailablePoints 查詢方法（含不變條件檢查）
-- ✅ RecalculatePoints 命令方法
-- ✅ ReconstructPointsAccount 工廠方法
-- ✅ PointsDeducted 事件
-- ✅ PointsRecalculated 事件
+* ✅ DeductPoints 命令方法
+* ✅ GetAvailablePoints 查詢方法（含不變條件檢查）
+* ✅ RecalculatePoints 命令方法
+* ✅ ReconstructPointsAccount 工廠方法
+* ✅ PointsDeducted 事件
+* ✅ PointsRecalculated 事件
 
 **預估總時間**: 8 小時
 
@@ -3128,8 +3157,9 @@ go tool cover -func=coverage.out
 ### Day 6: ConversionRule 聚合根 + Domain Service（積分計算規則）
 
 #### 時間分配
-- 上午 (4h): ConversionRule 聚合根結構 + 建構函數
-- 下午 (4h): 規則驗證邏輯 + PointsCalculationService
+
+* 上午 (4h): ConversionRule 聚合根結構 + 建構函數
+* 下午 (4h): 規則驗證邏輯 + PointsCalculationService
 
 ---
 
@@ -3154,7 +3184,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/yourorg/bar_crm/internal/domain/points"
+	"github.com/jackyeh168/bar_crm/internal/domain/points"
 )
 
 // === ConversionRule 建構測試 ===
@@ -3258,7 +3288,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/yourorg/bar_crm/internal/domain/shared"
+	"github.com/jackyeh168/bar_crm/internal/domain/shared"
 )
 
 // RuleID 規則唯一識別碼
@@ -3431,6 +3461,7 @@ go test -v -run TestNewConversionRule
 ```
 
 **驗證結果**:
+
 ```bash
 # 預期輸出：4 個測試全部通過
 PASS: TestNewConversionRule_ValidInput_Success
@@ -3628,6 +3659,7 @@ go test -v -run "TestConversionRule_Deactivate|TestConversionRule_IsApplicableAt
 ```
 
 **驗證結果**:
+
 ```bash
 # 預期輸出：6 個測試全部通過
 PASS: TestConversionRule_Deactivate_Success
@@ -3871,6 +3903,7 @@ go test -v -run TestReconstructConversionRule
 ```
 
 **驗證結果**:
+
 ```bash
 # 預期輸出：5 個測試全部通過
 PASS: TestReconstructConversionRule_ActiveRule_Success
@@ -3904,7 +3937,7 @@ import (
 
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
-	"github.com/yourorg/bar_crm/internal/domain/points"
+	"github.com/jackyeh168/bar_crm/internal/domain/points"
 )
 
 // MockConversionRuleRepository 模擬 Repository（用於測試）
@@ -4108,6 +4141,7 @@ go test -v -run TestPointsCalculationService
 ```
 
 **驗證結果**:
+
 ```bash
 # 預期輸出：4 個測試全部通過
 PASS: TestPointsCalculationService_CalculateForTransaction_StandardRule
@@ -4137,20 +4171,20 @@ golangci-lint run ./internal/domain/points/...
 ```
 
 **Day 6 檢查清單**:
-- ✅ ConversionRule 聚合根建構函數
-- ✅ Deactivate 命令方法
-- ✅ IsApplicableAt 和 OverlapsWith 查詢方法
-- ✅ ReconstructConversionRule 工廠方法
-- ✅ PointsCalculationService Domain Service
-- ✅ ConversionRuleReader 介面定義
+* ✅ ConversionRule 聚合根建構函數
+* ✅ Deactivate 命令方法
+* ✅ IsApplicableAt 和 OverlapsWith 查詢方法
+* ✅ ReconstructConversionRule 工廠方法
+* ✅ PointsCalculationService Domain Service
+* ✅ ConversionRuleReader 介面定義
 
 **Day 6 產出**:
-- ✅ RuleID 值對象
-- ✅ ConversionRule 聚合根（含停用邏輯）
-- ✅ PointsCalculationService Domain Service
-- ✅ ConversionRuleReader Repository 介面
-- ✅ 15 個新測試（Test 67-81）
-- ✅ 總計 81 個測試
+* ✅ RuleID 值對象
+* ✅ ConversionRule 聚合根（含停用邏輯）
+* ✅ PointsCalculationService Domain Service
+* ✅ ConversionRuleReader Repository 介面
+* ✅ 15 個新測試（Test 67-81）
+* ✅ 總計 81 個測試
 
 **預估總時間**: 8 小時
 
@@ -4159,8 +4193,9 @@ golangci-lint run ./internal/domain/points/...
 ### Day 7: Repository 介面定義 + 領域事件 + Week 1 總結
 
 #### 時間分配
-- 上午 (4h): Repository 介面定義（Reader/Writer/BatchReader 分離）
-- 下午 (4h): 完整的領域事件定義 + Week 1 總結
+
+* 上午 (4h): Repository 介面定義（Reader/Writer/BatchReader 分離）
+* 下午 (4h): 完整的領域事件定義 + Week 1 總結
 
 ---
 
@@ -4309,7 +4344,7 @@ package points_test
 import (
 	"testing"
 
-	"github.com/yourorg/bar_crm/internal/domain/points"
+	"github.com/jackyeh168/bar_crm/internal/domain/points"
 )
 
 // 這些測試主要用於文件化和驗證介面設計
@@ -4430,7 +4465,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/yourorg/bar_crm/internal/domain/shared"
+	"github.com/jackyeh168/bar_crm/internal/domain/shared"
 )
 
 // ===== PointsAccount 相關事件 =====
@@ -4769,7 +4804,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/yourorg/bar_crm/internal/domain/points"
+	"github.com/jackyeh168/bar_crm/internal/domain/points"
 )
 
 // Test 86: PointsAccountCreatedEvent 欄位正確
@@ -4864,6 +4899,7 @@ go test -v -run "Test.*Event"
 ```
 
 **驗證結果**:
+
 ```bash
 # 預期輸出：5 個事件測試全部通過
 PASS: TestPointsAccountCreatedEvent_FieldsAreCorrect
@@ -4911,6 +4947,7 @@ go mod verify
 ```
 
 **預期結果**:
+
 ```
 === Week 1 Points Context 測試統計 ===
 總測試數: 90 個
@@ -5013,10 +5050,11 @@ points, err := calcService.CalculateForTransaction(transaction)
 
 ## 下一步
 
-- Week 2: 實作其他 Bounded Contexts（Member, Invoice, Survey）
-- Week 6: 實作 Application Layer Use Cases
-- Week 8: 實作 Infrastructure Layer Repository 實作
+* Week 2: 實作其他 Bounded Contexts（Member, Invoice, Survey）
+* Week 6: 實作 Application Layer Use Cases
+* Week 8: 實作 Infrastructure Layer Repository 實作
 EOF
+
 ```
 
 ---
@@ -5042,10 +5080,12 @@ Clean Architecture and DDD principles with 100% TDD approach.
 ## Components Implemented
 
 ### Aggregates
+
 - PointsAccount: Member points account with earn/deduct/recalculate commands
 - ConversionRule: Points conversion rules with activation/deactivation lifecycle
 
 ### Value Objects
+
 - PointsAmount: Non-negative points value with checked/unchecked constructors
 - ConversionRate: Conversion rate with points calculation logic
 - AccountID, MemberID, RuleID: Identity value objects
@@ -5053,13 +5093,16 @@ Clean Architecture and DDD principles with 100% TDD approach.
 - PointsSource: Points source enumeration
 
 ### Domain Services
+
 - PointsCalculationService: Points calculation based on transaction and rules
 
 ### Repository Interfaces
+
 - PointsAccountRepository: Reader/Writer/BatchReader segregation (ISP)
 - ConversionRuleRepository: Reader/Writer/BatchReader segregation (ISP)
 
 ### Domain Events
+
 - PointsAccountCreated, PointsEarned, PointsDeducted, PointsRecalculated
 - ConversionRuleCreated, ConversionRuleDeactivated
 
@@ -5124,6 +5167,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>
 ```
 
 **驗證提交**:
+
 ```bash
 # 檢查提交歷史
 git log --oneline -1
@@ -5154,18 +5198,18 @@ tree internal/domain/points/
 ```
 
 **Day 7 檢查清單**:
-- ✅ PointsAccountRepository 介面定義（Reader/Writer/BatchReader）
-- ✅ ConversionRuleRepository 介面定義（Reader/Writer/BatchReader）
-- ✅ 6 個完整的領域事件實作
-- ✅ Week 1 完整測試驗證（90 tests, 95%+ coverage）
-- ✅ Git commit 提交
+* ✅ PointsAccountRepository 介面定義（Reader/Writer/BatchReader）
+* ✅ ConversionRuleRepository 介面定義（Reader/Writer/BatchReader）
+* ✅ 6 個完整的領域事件實作
+* ✅ Week 1 完整測試驗證（90 tests, 95%+ coverage）
+* ✅ Git commit 提交
 
 **Day 7 產出**:
-- ✅ repository.go（Repository 介面定義）
-- ✅ events.go（6 個領域事件）
-- ✅ events_test.go（5 個事件測試）
-- ✅ README.md（Points Context 文件）
-- ✅ Git commit（Week 1 完整產出）
+* ✅ repository.go（Repository 介面定義）
+* ✅ events.go（6 個領域事件）
+* ✅ events_test.go（5 個事件測試）
+* ✅ README.md（Points Context 文件）
+* ✅ Git commit（Week 1 完整產出）
 
 **預估總時間**: 8 小時
 
@@ -5198,48 +5242,49 @@ go mod verify
 ### Week 1 完成標準
 
 **測試指標**:
-- ✅ 90 個單元測試全部通過
-- ✅ 測試覆蓋率 95%+
-- ✅ 測試執行時間 < 1 秒
-- ✅ 無競態條件（`go test -race` 通過）
+* ✅ 90 個單元測試全部通過
+* ✅ 測試覆蓋率 95%+
+* ✅ 測試執行時間 < 1 秒
+* ✅ 無競態條件（`go test -race` 通過）
 
 **程式碼品質**:
-- ✅ 無 golangci-lint 警告
-- ✅ 所有公開 API 有 godoc 註釋
-- ✅ 遵循 Go 命名規範
-- ✅ 完整的錯誤處理（15 個 domain errors）
+* ✅ 無 golangci-lint 警告
+* ✅ 所有公開 API 有 godoc 註釋
+* ✅ 遵循 Go 命名規範
+* ✅ 完整的錯誤處理（15 個 domain errors）
 
 **功能完整性 - Value Objects (Day 1-3)**:
-- ✅ PointsAmount 值對象（checked + unchecked）
-- ✅ ConversionRate 值對象（含積分計算）
-- ✅ AccountID 值對象（UUID）
-- ✅ MemberID 值對象
-- ✅ RuleID 值對象（UUID）
-- ✅ DateRange 值對象（含 Contains 和 Overlaps）
-- ✅ PointsSource 枚舉
+* ✅ PointsAmount 值對象（checked + unchecked）
+* ✅ ConversionRate 值對象（含積分計算）
+* ✅ AccountID 值對象（UUID）
+* ✅ MemberID 值對象
+* ✅ RuleID 值對象（UUID）
+* ✅ DateRange 值對象（含 Contains 和 Overlaps）
+* ✅ PointsSource 枚舉
 
 **功能完整性 - Aggregates (Day 4-6)**:
-- ✅ PointsAccount 聚合根（含 EarnPoints, DeductPoints, RecalculatePoints）
-- ✅ ConversionRule 聚合根（含 Deactivate, IsApplicableAt）
-- ✅ ReconstructPointsAccount 工廠方法（含資料完整性驗證）
-- ✅ ReconstructConversionRule 工廠方法
+* ✅ PointsAccount 聚合根（含 EarnPoints, DeductPoints, RecalculatePoints）
+* ✅ ConversionRule 聚合根（含 Deactivate, IsApplicableAt）
+* ✅ ReconstructPointsAccount 工廠方法（含資料完整性驗證）
+* ✅ ReconstructConversionRule 工廠方法
 
 **功能完整性 - Domain Services (Day 6)**:
-- ✅ PointsCalculationService（積分計算服務）
+* ✅ PointsCalculationService（積分計算服務）
 
 **功能完整性 - Repository Interfaces (Day 7)**:
-- ✅ PointsAccountRepository（Reader/Writer/BatchReader 分離）
-- ✅ ConversionRuleRepository（Reader/Writer/BatchReader 分離）
+* ✅ PointsAccountRepository（Reader/Writer/BatchReader 分離）
+* ✅ ConversionRuleRepository（Reader/Writer/BatchReader 分離）
 
 **功能完整性 - Domain Events (Day 7)**:
-- ✅ PointsAccountCreated
-- ✅ PointsEarned
-- ✅ PointsDeducted
-- ✅ PointsRecalculated
-- ✅ ConversionRuleCreated
-- ✅ ConversionRuleDeactivated
+* ✅ PointsAccountCreated
+* ✅ PointsEarned
+* ✅ PointsDeducted
+* ✅ PointsRecalculated
+* ✅ ConversionRuleCreated
+* ✅ ConversionRuleDeactivated
 
 **Git 提交**:
+
 ```bash
 # 完整的 Week 1 提交（參考 Day 7 Step 7.3.3）
 git add internal/domain/
@@ -5288,10 +5333,10 @@ internal/domain/
 ```
 
 **統計**:
-- 📁 14 個檔案
-- 🧪 90 個測試（42 value objects + 28 PointsAccount + 15 ConversionRule + 5 events）
-- 📝 ~3000 行程式碼
-- ⏱️ 完成時間：7 天（56 小時）
+* 📁 14 個檔案
+* 🧪 90 個測試（42 value objects + 28 PointsAccount + 15 ConversionRule + 5 events）
+* 📝 ~3000 行程式碼
+* ⏱️ 完成時間：7 天（56 小時）
 
 ---
 
@@ -5336,10 +5381,10 @@ internal/domain/
 | **總計** | **Week 1 完成** | **56h** | **90** | ⬜ | Points Context 完成 |
 
 **圖例**:
-- ⬜ 未開始
-- 🔄 進行中
-- ✅ 已完成
-- ⚠️ 有問題
+* ⬜ 未開始
+* 🔄 進行中
+* ✅ 已完成
+* ⚠️ 有問題
 
 ---
 
@@ -5372,10 +5417,10 @@ internal/domain/
 
 ### Week 2 估計
 
-- **時間**: 7-10 天（60-80 小時）
-- **測試**: 預計新增 150+ 測試
-- **檔案**: 預計新增 20-30 個檔案
-- **覆蓋率**: 維持 95%+ 覆蓋率
+* **時間**: 7-10 天（60-80 小時）
+* **測試**: 預計新增 150+ 測試
+* **檔案**: 預計新增 20-30 個檔案
+* **覆蓋率**: 維持 95%+ 覆蓋率
 
 ### 實作策略
 

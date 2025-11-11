@@ -303,20 +303,21 @@ bar_crm/
 **位置**: `internal/domain/`
 
 **組織原則**:
-- ✅ **按限界上下文劃分**：每個上下文一個目錄
-- ✅ **Repository 接口屬於 Domain**：定義在 `repository/` 子目錄
-- ✅ **無外部依賴**：只能依賴標準庫和同層其他包
-- ✅ **統一命名**：值對象、事件、錯誤統一命名
+* ✅ **按限界上下文劃分**：每個上下文一個目錄
+* ✅ **Repository 接口屬於 Domain**：定義在 `repository/` 子目錄
+* ✅ **無外部依賴**：只能依賴標準庫和同層其他包
+* ✅ **統一命名**：值對象、事件、錯誤統一命名
 
 **文件命名規範**:
-- `聚合名.go` - 聚合根實現（例如 `account.go`, `member.go`）
-- `value_objects.go` - 所有值對象定義
-- `events.go` - 所有領域事件定義
-- `errors.go` - 所有領域錯誤定義
-- `*_service.go` - 領域服務（例如 `calculation_service.go`）
-- `repository/` - Repository 接口目錄
+* `聚合名.go` - 聚合根實現（例如 `account.go`,  `member.go`）
+* `value_objects.go` - 所有值對象定義
+* `events.go` - 所有領域事件定義
+* `errors.go` - 所有領域錯誤定義
+* `*_service.go` - 領域服務（例如 `calculation_service.go`）
+* `repository/` - Repository 接口目錄
 
 **示例** (Points Context):
+
 ```
 internal/domain/points/
 ├── account.go                 # PointsAccount 聚合根
@@ -338,17 +339,18 @@ internal/domain/points/
 **位置**: `internal/application/`
 
 **組織原則**:
-- ✅ **Use Cases 按上下文劃分**：每個上下文一個子目錄
-- ✅ **一個文件一個 Use Case**：清晰的單一職責
-- ✅ **DTO 集中管理**：所有 DTO 在 `dto/` 目錄
-- ✅ **Event Handlers 按職責劃分**：積分、稽核、通知分開
+* ✅ **Use Cases 按上下文劃分**：每個上下文一個子目錄
+* ✅ **一個文件一個 Use Case**：清晰的單一職責
+* ✅ **DTO 集中管理**：所有 DTO 在 `dto/` 目錄
+* ✅ **Event Handlers 按職責劃分**：積分、稽核、通知分開
 
 **文件命名規範**:
-- `動詞_名詞.go` - Use Case 文件（例如 `earn_points.go`, `register_member.go`）
-- `*_dto.go` - DTO 文件（例如 `member_dto.go`, `points_dto.go`）
-- `*_handler.go` - Event Handler 文件（例如 `transaction_verified_handler.go`）
+* `動詞_名詞.go` - Use Case 文件（例如 `earn_points.go`,  `register_member.go`）
+* `*_dto.go` - DTO 文件（例如 `member_dto.go`,  `points_dto.go`）
+* `*_handler.go` - Event Handler 文件（例如 `transaction_verified_handler.go`）
 
 **Use Case 命名**:
+
 ```go
 // ✅ 正確：清晰的業務動作
 type EarnPointsUseCase struct {}
@@ -361,6 +363,7 @@ type Handler struct {}        // 過於通用
 ```
 
 **示例** (Application Layer):
+
 ```
 internal/application/
 ├── usecases/
@@ -392,19 +395,20 @@ internal/application/
 **位置**: `internal/infrastructure/`
 
 **組織原則**:
-- ✅ **按技術類型劃分**：persistence, cache, external, events
-- ✅ **Repository 實現按上下文劃分**：與 Domain 結構對應
-- ✅ **GORM 模型集中定義**：所有表結構在 `gorm/models.go`
-- ✅ **外部服務適配器隔離**：每個外部服務一個子目錄
+* ✅ **按技術類型劃分**：persistence, cache, external, events
+* ✅ **Repository 實現按上下文劃分**：與 Domain 結構對應
+* ✅ **GORM 模型集中定義**：所有表結構在 `gorm/models.go`
+* ✅ **外部服務適配器隔離**：每個外部服務一個子目錄
 
 **文件命名規範**:
-- `*_repository.go` - Repository 實現（例如 `member_repository.go`）
-- `*_adapter.go` - 外部服務適配器（例如 `linebot_adapter.go`）
-- `*_cache.go` - 緩存實現（例如 `points_cache.go`）
-- `models.go` - GORM 模型定義
-- `transaction.go` - Transaction Context 實現
+* `*_repository.go` - Repository 實現（例如 `member_repository.go`）
+* `*_adapter.go` - 外部服務適配器（例如 `linebot_adapter.go`）
+* `*_cache.go` - 緩存實現（例如 `points_cache.go`）
+* `models.go` - GORM 模型定義
+* `transaction.go` - Transaction Context 實現
 
 **GORM 模型命名**:
+
 ```go
 // ✅ 正確：模型名加 "Model" 後綴
 type PointsAccountModel struct {
@@ -424,6 +428,7 @@ type PointsAccount struct {  // 與 Domain 實體同名
 ```
 
 **示例** (Infrastructure Layer):
+
 ```
 internal/infrastructure/
 ├── persistence/
@@ -463,18 +468,19 @@ internal/infrastructure/
 **位置**: `internal/presentation/`
 
 **組織原則**:
-- ✅ **按協議類型劃分**：http, linebot, grpc（未來）
-- ✅ **Handlers 按上下文劃分**：每個上下文一個 Handler 文件
-- ✅ **中間件集中管理**：統一的認證、日誌、錯誤處理
-- ✅ **響應格式統一**：success, error 結構標準化
+* ✅ **按協議類型劃分**：http, linebot, grpc（未來）
+* ✅ **Handlers 按上下文劃分**：每個上下文一個 Handler 文件
+* ✅ **中間件集中管理**：統一的認證、日誌、錯誤處理
+* ✅ **響應格式統一**：success, error 結構標準化
 
 **文件命名規範**:
-- `*_handler.go` - HTTP Handler（例如 `points_handler.go`）
-- `server.go` - Server 配置與啟動
-- `middleware/*.go` - 中間件（auth.go, logger.go）
-- `responses/*.go` - 響應結構（success.go, error.go）
+* `*_handler.go` - HTTP Handler（例如 `points_handler.go`）
+* `server.go` - Server 配置與啟動
+* `middleware/*.go` - 中間件（auth.go, logger.go）
+* `responses/*.go` - 響應結構（success.go, error.go）
 
 **Handler 結構**:
+
 ```go
 // ✅ 正確：每個 Handler 處理一個上下文的所有端點
 type PointsHandler struct {
@@ -495,6 +501,7 @@ type EarnPointsHandler struct {}  // 只處理一個端點，過於細分
 ```
 
 **示例** (Presentation Layer):
+
 ```
 internal/presentation/
 ├── http/
@@ -527,25 +534,27 @@ internal/presentation/
 ### 3.1 Go 文件命名
 
 **原則**:
-- ✅ 小寫 + 下劃線：`member_repository.go`, `points_account.go`
-- ✅ 單數形式：`member.go` 而非 `members.go`（除非是集合工具）
-- ✅ 描述內容而非技術：`calculation_service.go` 而非 `service.go`
-- ❌ 避免通用名稱：`handler.go`, `service.go`, `util.go`
+* ✅ 小寫 + 下劃線：`member_repository.go`,  `points_account.go`
+* ✅ 單數形式：`member.go` 而非 `members.go`（除非是集合工具）
+* ✅ 描述內容而非技術：`calculation_service.go` 而非 `service.go`
+* ❌ 避免通用名稱：`handler.go`,  `service.go`,  `util.go`
 
 **特殊文件**:
-- `*_test.go` - 單元測試（與源文件同目錄）
-- `*_mock.go` - Mock 實現（在 `test/mocks/` 目錄）
-- `doc.go` - 包文檔（可選，用於 godoc）
+* `*_test.go` - 單元測試（與源文件同目錄）
+* `*_mock.go` - Mock 實現（在 `test/mocks/` 目錄）
+* `doc.go` - 包文檔（可選，用於 godoc）
 
 ### 3.2 測試文件命名
 
 **規則**:
+
 ```
 source_file.go       → source_file_test.go        # 單元測試
 member_repository.go → member_repository_test.go
 ```
 
 **測試類型標記** (使用 Build Tags):
+
 ```go
 //go:build integration
 // +build integration
@@ -565,12 +574,13 @@ package e2e_test  // 端到端測試
 ### 4.1 包名原則
 
 **規則**:
-- ✅ 單數形式：`package member` 而非 `package members`
-- ✅ 小寫無下劃線：`package linebot` 而非 `package line_bot`
-- ✅ 描述性：`package calculation` 而非 `package calc`
-- ❌ 避免泛型名稱：`common`, `util`, `helper`
+* ✅ 單數形式：`package member` 而非 `package members`
+* ✅ 小寫無下劃線：`package linebot` 而非 `package line_bot`
+* ✅ 描述性：`package calculation` 而非 `package calc`
+* ❌ 避免泛型名稱：`common`,  `util`,  `helper`
 
 **示例**:
+
 ```go
 // ✅ 正確
 package points         // internal/domain/points/
@@ -586,6 +596,7 @@ package pt             // 過於簡寫
 ### 4.2 Import Path
 
 **結構**:
+
 ```go
 import (
     // 標準庫
@@ -598,25 +609,26 @@ import (
     "gorm.io/gorm"
 
     // 內部包 - Domain Layer
-    "github.com/yourorg/bar_crm/internal/domain/points"
-    "github.com/yourorg/bar_crm/internal/domain/points/repository"
+    "github.com/jackyeh168/bar_crm/internal/domain/points"
+    "github.com/jackyeh168/bar_crm/internal/domain/points/repository"
 
     // 內部包 - Application Layer
-    "github.com/yourorg/bar_crm/internal/application/usecases/points"
-    "github.com/yourorg/bar_crm/internal/application/dto"
+    "github.com/jackyeh168/bar_crm/internal/application/usecases/points"
+    "github.com/jackyeh168/bar_crm/internal/application/dto"
 
     // 內部包 - Infrastructure Layer
-    "github.com/yourorg/bar_crm/internal/infrastructure/persistence/gorm"
+    "github.com/jackyeh168/bar_crm/internal/infrastructure/persistence/gorm"
 )
 ```
 
 ### 4.3 包可見性
 
 **規則**:
-- ✅ 公開（Exported）：大寫開頭 - `type Member struct {}`
-- ✅ 私有（Unexported）：小寫開頭 - `type memberModel struct {}`
+* ✅ 公開（Exported）：大寫開頭 - `type Member struct {}`
+* ✅ 私有（Unexported）：小寫開頭 - `type memberModel struct {}`
 
 **最佳實踐**:
+
 ```go
 // Domain Layer - 聚合根公開
 type PointsAccount struct {
@@ -649,58 +661,62 @@ func NewGormPointsAccountRepository(db *gorm.DB) repository.PointsAccountReposit
 
 ### 5.1 允許的 Import 路徑
 
-**Domain Layer** (`internal/domain/`):
+**Domain Layer** ( `internal/domain/` ):
+
 ```go
 // ✅ 允許
-import "github.com/yourorg/bar_crm/internal/domain/member"   // 同層依賴
-import "github.com/yourorg/bar_crm/internal/domain/shared"   // 共享層
+import "github.com/jackyeh168/bar_crm/internal/domain/member"   // 同層依賴
+import "github.com/jackyeh168/bar_crm/internal/domain/shared"   // 共享層
 import "time"                                                // 標準庫
 import "github.com/shopspring/decimal"                       // 數學庫（純計算）
 
 // ❌ 禁止
-import "github.com/yourorg/bar_crm/internal/application"     // 外層依賴
-import "github.com/yourorg/bar_crm/internal/infrastructure"  // 外層依賴
+import "github.com/jackyeh168/bar_crm/internal/application"     // 外層依賴
+import "github.com/jackyeh168/bar_crm/internal/infrastructure"  // 外層依賴
 import "gorm.io/gorm"                                        // 技術框架
 ```
 
-**Application Layer** (`internal/application/`):
+**Application Layer** ( `internal/application/` ):
+
 ```go
 // ✅ 允許
-import "github.com/yourorg/bar_crm/internal/domain/points"   // 內層依賴
-import "github.com/yourorg/bar_crm/internal/domain/points/repository"
-import "github.com/yourorg/bar_crm/internal/application/dto" // 同層依賴
+import "github.com/jackyeh168/bar_crm/internal/domain/points"   // 內層依賴
+import "github.com/jackyeh168/bar_crm/internal/domain/points/repository"
+import "github.com/jackyeh168/bar_crm/internal/application/dto" // 同層依賴
 
 // ❌ 禁止
-import "github.com/yourorg/bar_crm/internal/infrastructure"  // 外層依賴
+import "github.com/jackyeh168/bar_crm/internal/infrastructure"  // 外層依賴
 import "gorm.io/gorm"                                        // 技術框架（除注入點）
 ```
 
-**Infrastructure Layer** (`internal/infrastructure/`):
+**Infrastructure Layer** ( `internal/infrastructure/` ):
+
 ```go
 // ✅ 允許
-import "github.com/yourorg/bar_crm/internal/domain/points"   // 實現接口
-import "github.com/yourorg/bar_crm/internal/domain/points/repository"
-import "github.com/yourorg/bar_crm/internal/domain/shared"   // Event Bus 介面定義
+import "github.com/jackyeh168/bar_crm/internal/domain/points"   // 實現接口
+import "github.com/jackyeh168/bar_crm/internal/domain/points/repository"
+import "github.com/jackyeh168/bar_crm/internal/domain/shared"   // Event Bus 介面定義
 import "gorm.io/gorm"                                        // 技術框架
 import "github.com/redis/go-redis/v9"                        // 技術框架
 
 // ❌ 禁止
-import "github.com/yourorg/bar_crm/internal/application"     // 外層依賴（違反依賴規則）
-import "github.com/yourorg/bar_crm/internal/presentation"    // 外層依賴
+import "github.com/jackyeh168/bar_crm/internal/application"     // 外層依賴（違反依賴規則）
+import "github.com/jackyeh168/bar_crm/internal/presentation"    // 外層依賴
 
 // 注意：Event Bus 實現在 Infrastructure Layer，但只依賴 shared.EventPublisher 介面
 // Event Handlers 在 Application Layer，透過 DI 註冊到 Event Bus
 ```
 
-**Presentation Layer** (`internal/presentation/`):
+**Presentation Layer** ( `internal/presentation/` ):
+
 ```go
 // ✅ 允許
-import "github.com/yourorg/bar_crm/internal/application/usecases"
-import "github.com/yourorg/bar_crm/internal/domain/points"   // 僅用於 DTO 轉換
+import "github.com/jackyeh168/bar_crm/internal/application/usecases"
+import "github.com/jackyeh168/bar_crm/internal/domain/points"   // 僅用於 DTO 轉換
 import "github.com/gin-gonic/gin"                            // Web 框架
 
 // ❌ 禁止
-import "github.com/yourorg/bar_crm/internal/infrastructure"  // 跨層依賴
+import "github.com/jackyeh168/bar_crm/internal/infrastructure"  // 跨層依賴
 ```
 
 ### 5.2 避免循環依賴
@@ -708,6 +724,7 @@ import "github.com/yourorg/bar_crm/internal/infrastructure"  // 跨層依賴
 **常見問題與解決方案**:
 
 **問題 1: Domain ↔ Application 循環依賴**
+
 ```go
 // ❌ 錯誤：Domain 依賴 Application 的 DTO
 package points  // Domain Layer
@@ -718,6 +735,7 @@ func (a *PointsAccount) RecalculatePoints(dtos []dto.TransactionDTO) error {}
 ```
 
 **解決方案**：Domain 定義接口，Application 的 DTO 實現接口
+
 ```go
 // ✅ 正確：Domain 定義接口
 package points  // Domain Layer
@@ -739,6 +757,7 @@ func (d TransactionDTO) IsSurveySubmitted() bool { return d.SurveySubmitted }
 ```
 
 **問題 2: Repository ↔ Model 循環依賴**
+
 ```go
 // ❌ 錯誤：Domain Repository 接口依賴 Infrastructure 的 Model
 package repository  // Domain Layer
@@ -751,6 +770,7 @@ type PointsAccountRepository interface {
 ```
 
 **解決方案**：Repository 接口只依賴 Domain 實體
+
 ```go
 // ✅ 正確：Repository 接口只依賴 Domain 實體
 package repository  // Domain Layer
@@ -779,20 +799,21 @@ func (r *GormPointsAccountRepository) Save(account *points.PointsAccount) error 
 **用途**: 應用程序入口點
 
 **規則**:
-- ✅ 每個可執行程序一個子目錄
-- ✅ main 函數應該簡短（< 100 行）
-- ✅ 依賴注入配置在 main 函數中
-- ❌ 避免業務邏輯
+* ✅ 每個可執行程序一個子目錄
+* ✅ main 函數應該簡短（< 100 行）
+* ✅ 依賴注入配置在 main 函數中
+* ❌ 避免業務邏輯
 
 **示例**:
+
 ```go
 // cmd/app/main.go
 package main
 
 import (
     "go.uber.org/fx"
-    "github.com/yourorg/bar_crm/internal/infrastructure/config"
-    "github.com/yourorg/bar_crm/internal/presentation/http"
+    "github.com/jackyeh168/bar_crm/internal/infrastructure/config"
+    "github.com/jackyeh168/bar_crm/internal/presentation/http"
 )
 
 func main() {
@@ -809,33 +830,35 @@ func main() {
 **用途**: Go 語言級別的可見性控制
 
 **規則**:
-- ✅ `internal/` 下的包不能被外部 import
-- ✅ 所有業務代碼應放在 `internal/`
-- ✅ 防止外部依賴內部實現
+* ✅ `internal/` 下的包不能被外部 import
+* ✅ 所有業務代碼應放在 `internal/`
+* ✅ 防止外部依賴內部實現
 
 **為什麼使用 internal/？**
+
 ```go
 // ❌ 錯誤：沒有 internal/，外部項目可以 import
-import "github.com/yourorg/bar_crm/domain/points"
+import "github.com/jackyeh168/bar_crm/domain/points"
 
 // ✅ 正確：有 internal/，外部 import 會報錯
-import "github.com/yourorg/bar_crm/internal/domain/points"
+import "github.com/jackyeh168/bar_crm/internal/domain/points"
 // → Error: use of internal package not allowed
 ```
 
 ### 6.3 `shared/` vs `common/`
 
-**推薦使用 `shared/`**:
-- ✅ `internal/domain/shared/` - 跨上下文的領域概念
-  - TransactionContext 接口
-  - DomainEvent 基礎接口
-  - 通用錯誤
+**推薦使用 `shared/` **:
+* ✅ `internal/domain/shared/` - 跨上下文的領域概念
+  + TransactionContext 接口
+  + DomainEvent 基礎接口
+  + 通用錯誤
 
-**避免使用 `common/` 或 `util/`**:
-- ❌ `common/` - 容易變成垃圾堆（God Package）
-- ❌ `util/` - 不符合領域模型思維
+**避免使用 `common/` 或 `util/` **:
+* ❌ `common/` - 容易變成垃圾堆（God Package）
+* ❌ `util/` - 不符合領域模型思維
 
 **正確使用**:
+
 ```go
 // ✅ 正確：shared/ 只放跨上下文的領域概念
 package shared
@@ -854,6 +877,7 @@ type TransactionContext interface {
 ### 6.4 測試目錄
 
 **單元測試** - 與源文件同目錄:
+
 ```
 internal/domain/points/
 ├── account.go
@@ -861,6 +885,7 @@ internal/domain/points/
 ```
 
 **集成測試** - 獨立的 test/ 目錄:
+
 ```
 test/
 ├── integration/
@@ -876,16 +901,17 @@ test/
 ## 7. 文件大小建議
 
 **推薦大小**:
-- ✅ 聚合根文件：200-500 行
-- ✅ Use Case 文件：50-150 行
-- ✅ Repository 實現：100-300 行
-- ✅ Handler 文件：100-200 行
+* ✅ 聚合根文件：200-500 行
+* ✅ Use Case 文件：50-150 行
+* ✅ Repository 實現：100-300 行
+* ✅ Handler 文件：100-200 行
 
 **何時拆分文件？**
-- ⚠️ > 500 行：考慮拆分
-- ⚠️ > 1000 行：必須拆分
+* ⚠️ > 500 行：考慮拆分
+* ⚠️ > 1000 行：必須拆分
 
 **拆分策略**:
+
 ```go
 // 原始文件過大
 account.go  // 800 lines
@@ -904,34 +930,35 @@ account_events.go    // 事件處理（100 lines）
 ### 代碼審查時的目錄結構檢查
 
 **Domain Layer**:
-- [ ] 所有聚合根都有獨立文件
-- [ ] Repository 接口定義在 `repository/` 子目錄
-- [ ] 無 import `infrastructure`, `application`, `presentation`
-- [ ] 無 import `gorm`, `gin`, `redis` 等技術框架
+* [ ] 所有聚合根都有獨立文件
+* [ ] Repository 接口定義在 `repository/` 子目錄
+* [ ] 無 import `infrastructure`,  `application`,  `presentation`
+* [ ] 無 import `gorm`,  `gin`,  `redis` 等技術框架
 
 **Application Layer**:
-- [ ] Use Cases 按上下文劃分
-- [ ] 每個 Use Case 一個文件
-- [ ] DTO 集中在 `dto/` 目錄
-- [ ] Event Handlers 按職責劃分
+* [ ] Use Cases 按上下文劃分
+* [ ] 每個 Use Case 一個文件
+* [ ] DTO 集中在 `dto/` 目錄
+* [ ] Event Handlers 按職責劃分
 
 **Infrastructure Layer**:
-- [ ] Repository 實現按上下文劃分
-- [ ] GORM 模型集中定義在 `gorm/models.go`
-- [ ] 外部服務適配器隔離在獨立子目錄
-- [ ] 無 import `presentation` 層（除 Event Handlers）
+* [ ] Repository 實現按上下文劃分
+* [ ] GORM 模型集中定義在 `gorm/models.go`
+* [ ] 外部服務適配器隔離在獨立子目錄
+* [ ] 無 import `presentation` 層（除 Event Handlers）
 
 **Presentation Layer**:
-- [ ] Handlers 按上下文劃分
-- [ ] 中間件集中在 `middleware/` 目錄
-- [ ] 響應結構統一在 `responses/` 目錄
-- [ ] 無 import `infrastructure` 層
+* [ ] Handlers 按上下文劃分
+* [ ] 中間件集中在 `middleware/` 目錄
+* [ ] 響應結構統一在 `responses/` 目錄
+* [ ] 無 import `infrastructure` 層
 
 ---
 
 ## 9. 常見錯誤
 
 ### ❌ 錯誤 1: 過度扁平化
+
 ```
 internal/
 ├── member.go
@@ -945,6 +972,7 @@ internal/
 **問題**: 無法區分層次，依賴關係混亂
 
 ### ❌ 錯誤 2: 過度嵌套
+
 ```
 internal/
 └── domain/
@@ -959,6 +987,7 @@ internal/
 **問題**: 過度嵌套導致 import 路徑過長
 
 ### ❌ 錯誤 3: 技術驅動的目錄結構
+
 ```
 internal/
 ├── models/       # GORM 模型

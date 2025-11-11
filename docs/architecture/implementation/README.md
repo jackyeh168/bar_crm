@@ -25,12 +25,14 @@ internal/                        ← 實際代碼（Code）
 ## 文檔目錄
 
 ### 1. **[目錄結構設計](./01-directory-structure.md)** ⭐ 必讀
+
    - 完整的 Go 項目目錄結構
    - 各層級的目錄組織
    - 文件命名規範
    - 包（Package）劃分原則
 
 ### 2. **[Domain Layer 實現指南](./02-domain-layer-implementation.md)**
+
    - 聚合根的 Go 實現
    - 值對象的構造與驗證
    - 領域服務的實現模式
@@ -39,6 +41,7 @@ internal/                        ← 實際代碼（Code）
    - 領域錯誤的定義
 
 ### 3. **[Application Layer 實現指南](./03-application-layer-implementation.md)**
+
    - Use Case 的實現模式
    - DTO 的設計與轉換
    - 事務管理（Transaction Context Pattern）
@@ -46,6 +49,7 @@ internal/                        ← 實際代碼（Code）
    - 事件處理器（Event Handlers）
 
 ### 4. **[Infrastructure Layer 實現指南](./04-infrastructure-layer-implementation.md)**
+
    - GORM Repository 實現
    - Redis 緩存實現
    - 外部服務適配器（LINE SDK, Google OAuth）
@@ -53,36 +57,42 @@ internal/                        ← 實際代碼（Code）
    - 配置管理
 
 ### 5. **[Presentation Layer 實現指南](./05-presentation-layer-implementation.md)**
+
    - Gin HTTP Handler 實現
    - LINE Bot Webhook Handler
    - 請求驗證與錯誤處理
    - DTO 映射
 
 ### 6. **[依賴注入配置](./06-dependency-injection.md)**
+
    - Uber FX 模組設計
    - 依賴注入的模塊順序
    - 接口綁定與生命週期管理
    - 測試時的依賴替換
 
 ### 7. **[包命名規範](./07-package-naming.md)**
+
    - Go 包命名最佳實踐
    - 避免循環依賴
    - 包的可見性控制
    - 內部包（internal/）的使用
 
 ### 8. **[完整代碼範例](./08-code-examples.md)**
+
    - 積分管理 Context 完整實現
    - 從 HTTP 請求到數據庫的完整流程
    - 測試代碼範例
    - 常見錯誤與解決方案
 
 ### 9. **[生產環境保護措施](./09-production-safeguards.md)**
+
    - Panic Recovery Middleware
    - 監控與告警機制
    - 資料完整性保護
    - 錯誤處理最佳實踐
 
 ### 10. **[實作路線圖](./10-implementation-roadmap.md)** ⭐ 開始實作必讀
+
    - 設計決策總結
    - 10 階段實作計劃（12 週）
    - 每週檢查點與里程碑
@@ -92,6 +102,7 @@ internal/                        ← 實際代碼（Code）
    - 風險管理
 
 ### 11. **[詳細任務分解計劃](./11-detailed-task-breakdown.md)** 🔥 每日執行指南
+
    - 精確到小時的任務分配
    - Day-by-Day 執行步驟（Week 1-3 天完整範例）
    - 完整測試程式碼範例（TDD 流程）
@@ -107,15 +118,15 @@ internal/                        ← 實際代碼（Code）
 
 ### 我想知道...
 
-- **🚀 我要開始實作了，從哪裡開始？** → 閱讀 [10-實作路線圖](./10-implementation-roadmap.md)（包含第一天任務）
-- **如何組織項目目錄？** → 閱讀 [01-目錄結構設計](./01-directory-structure.md)
-- **如何實現聚合根？** → 閱讀 [02-Domain Layer 實現指南](./02-domain-layer-implementation.md) 第 2.2 節
-- **如何實現 Use Case？** → 閱讀 [03-Application Layer 實現指南](./03-application-layer-implementation.md) 第 3.2 節
-- **如何實現 Repository？** → 閱讀 [04-Infrastructure Layer 實現指南](./04-infrastructure-layer-implementation.md) 第 4.2 節
-- **如何配置依賴注入？** → 閱讀 [06-依賴注入配置](./06-dependency-injection.md)
-- **如何避免循環依賴？** → 閱讀 [07-包命名規範](./07-package-naming.md) 第 7.3 節
-- **完整的實現範例？** → 閱讀 [08-完整代碼範例](./08-code-examples.md)
-- **生產環境需要注意什麼？** → 閱讀 [09-生產環境保護措施](./09-production-safeguards.md)
+* **🚀 我要開始實作了，從哪裡開始？** → 閱讀 [10-實作路線圖](./10-implementation-roadmap.md)（包含第一天任務）
+* **如何組織項目目錄？** → 閱讀 [01-目錄結構設計](./01-directory-structure.md)
+* **如何實現聚合根？** → 閱讀 [02-Domain Layer 實現指南](./02-domain-layer-implementation.md) 第 2.2 節
+* **如何實現 Use Case？** → 閱讀 [03-Application Layer 實現指南](./03-application-layer-implementation.md) 第 3.2 節
+* **如何實現 Repository？** → 閱讀 [04-Infrastructure Layer 實現指南](./04-infrastructure-layer-implementation.md) 第 4.2 節
+* **如何配置依賴注入？** → 閱讀 [06-依賴注入配置](./06-dependency-injection.md)
+* **如何避免循環依賴？** → 閱讀 [07-包命名規範](./07-package-naming.md) 第 7.3 節
+* **完整的實現範例？** → 閱讀 [08-完整代碼範例](./08-code-examples.md)
+* **生產環境需要注意什麼？** → 閱讀 [09-生產環境保護措施](./09-production-safeguards.md)
 
 ---
 
@@ -195,6 +206,7 @@ bar_crm/
 ## 實現流程建議
 
 ### Phase 1: 基礎設施搭建（Week 1）
+
 1. 創建項目目錄結構
 2. 配置 Go Modules
 3. 設置 GORM + PostgreSQL
@@ -202,6 +214,7 @@ bar_crm/
 5. 實現基礎的 HTTP Server（Gin）
 
 ### Phase 2: 核心域實現（Week 2-3）
+
 1. 實現 Points Management Context（核心域）
    - Domain Layer: Aggregate + Value Objects
    - Application Layer: Use Cases
@@ -210,18 +223,21 @@ bar_crm/
 2. 編寫單元測試與集成測試
 
 ### Phase 3: 支撐域實現（Week 4-5）
+
 1. 實現 Member Management Context
 2. 實現 Invoice Processing Context
 3. 實現 Survey Management Context
 4. 實現跨上下文的事件集成
 
 ### Phase 4: 外部集成（Week 6）
+
 1. 實現 LINE Bot SDK 適配器
 2. 實現 Google OAuth 適配器
 3. 實現 iChef 匯入功能
 4. 實現通知服務
 
 ### Phase 5: 生產就緒（Week 7-8）
+
 1. 實現 Audit Context（稽核追蹤）
 2. 完善錯誤處理與日誌
 3. 添加監控與告警
@@ -270,7 +286,7 @@ package contract
 import (
     "testing"
     "github.com/stretchr/testify/assert"
-    "github.com/yourorg/bar_crm/internal/infrastructure/external/linebot"
+    "github.com/jackyeh168/bar_crm/internal/infrastructure/external/linebot"
 )
 
 // TestLineBotAdapter_GetProfile_Contract 測試 LINE API 契約
@@ -355,6 +371,7 @@ func TestLineBotAdapter_GetProfile_APIBroken(t *testing.T) {
 ```
 
 **測試執行**:
+
 ```bash
 # 運行契約測試
 go test ./test/contract/... -v
@@ -370,10 +387,10 @@ go test ./test/contract/... -tags=contract -v
 4. **減少生產事故**: 避免因外部 API 變更導致的運行時錯誤
 
 **適用場景**:
-- ✅ LINE Bot SDK (官方 API)
-- ✅ Google OAuth2 (認證 API)
-- ✅ iChef POS (Excel 格式變更偵測)
-- ✅ 任何第三方 HTTP API
+* ✅ LINE Bot SDK (官方 API)
+* ✅ Google OAuth2 (認證 API)
+* ✅ iChef POS (Excel 格式變更偵測)
+* ✅ 任何第三方 HTTP API
 
 ---
 
@@ -390,7 +407,7 @@ package points_test
 import (
     "testing"
     "github.com/stretchr/testify/assert"
-    "github.com/yourorg/bar_crm/internal/domain/points"
+    "github.com/jackyeh168/bar_crm/internal/domain/points"
 )
 
 // --- 構造函數驗證測試 ---
@@ -585,6 +602,7 @@ func TestConversionRate_Boundaries(t *testing.T) {
 6. ✅ **邊界值**: 測試有效範圍的邊界情況
 
 **測試執行**:
+
 ```bash
 # 運行值對象測試
 go test ./internal/domain/points -v -run TestPointsAmount
@@ -596,10 +614,10 @@ go tool cover -html=coverage.out
 ```
 
 **值對象測試的設計原則**:
-- **快速執行**: 值對象測試無 I/O，應在毫秒內完成
-- **完全隔離**: 無需 Mock，直接測試純邏輯
-- **高覆蓋率**: 目標 90%+ 代碼覆蓋率
-- **表格驅動**: 使用 table-driven tests 覆蓋多種場景
+* **快速執行**: 值對象測試無 I/O，應在毫秒內完成
+* **完全隔離**: 無需 Mock，直接測試純邏輯
+* **高覆蓋率**: 目標 90%+ 代碼覆蓋率
+* **表格驅動**: 使用 table-driven tests 覆蓋多種場景
 
 ---
 
@@ -608,6 +626,7 @@ go tool cover -html=coverage.out
 ### 錯誤分層原則
 
 **1. Domain Layer - 定義業務錯誤**
+
 ```go
 // internal/domain/points/errors.go
 var (
@@ -618,6 +637,7 @@ var (
 ```
 
 **2. Infrastructure Layer - 轉換技術錯誤**
+
 ```go
 // internal/infrastructure/persistence/points/account_repository.go
 func (r *GormPointsAccountRepository) FindByID(...) (*points.PointsAccount, error) {
@@ -630,6 +650,7 @@ func (r *GormPointsAccountRepository) FindByID(...) (*points.PointsAccount, erro
 ```
 
 **3. Application Layer - 透傳 Domain 錯誤**
+
 ```go
 // internal/application/usecases/points/earn_points.go
 func (uc *EarnPointsUseCase) Execute(cmd EarnPointsCommand) (*EarnPointsResult, error) {
@@ -645,6 +666,7 @@ func (uc *EarnPointsUseCase) Execute(cmd EarnPointsCommand) (*EarnPointsResult, 
 ```
 
 **4. Presentation Layer - 映射 HTTP 狀態碼**
+
 ```go
 // internal/presentation/http/handlers/points_handler.go
 func (h *PointsHandler) HandleEarnPoints(c *gin.Context) {
@@ -667,7 +689,8 @@ func (h *PointsHandler) HandleEarnPoints(c *gin.Context) {
 
 ### 錯誤檢查最佳實踐
 
-**使用 errors.Is 和 errors.As**:
+**使用 errors. Is 和 errors. As**:
+
 ```go
 // ✅ 正確：使用 errors.Is 檢查錯誤類型
 if errors.Is(err, points.ErrInsufficientPoints) {
@@ -689,6 +712,7 @@ if err == points.ErrInsufficientPoints {
 ### Panic vs Error 使用時機
 
 **何時使用 error（業務錯誤）**:
+
 ```go
 // ✅ 業務規則違反 - 返回 error
 func (a *PointsAccount) DeductPoints(amount PointsAmount) error {
@@ -709,6 +733,7 @@ func (r *Repository) FindByID(id string) (*Entity, error) {
 ```
 
 **何時使用 panic（程序錯誤）**:
+
 ```go
 // ✅ 不變條件違反 - panic（數據損壞或邏輯錯誤）
 func (a *PointsAccount) GetAvailablePoints() PointsAmount {
@@ -739,14 +764,15 @@ func (p PointsAmount) subtract(other PointsAmount) PointsAmount {
 ```
 
 **關鍵原則**:
-- **業務錯誤（可預期）→ 返回 error**：用戶輸入錯誤、外部服務失敗、資源不存在
-- **程序錯誤（不應發生）→ panic**：不變條件違反、配置錯誤、邏輯錯誤
-- **Fail Fast 原則**：錯誤應該立即暴露，而非靜默處理
-- **生產環境**：使用 `recover()` 在頂層捕獲 panic，記錄日誌並告警
+* **業務錯誤（可預期）→ 返回 error**：用戶輸入錯誤、外部服務失敗、資源不存在
+* **程序錯誤（不應發生）→ panic**：不變條件違反、配置錯誤、邏輯錯誤
+* **Fail Fast 原則**：錯誤應該立即暴露，而非靜默處理
+* **生產環境**：使用 `recover()` 在頂層捕獲 panic，記錄日誌並告警
 
 ### 錯誤日誌記錄
 
 **分層日誌策略**:
+
 ```go
 // Infrastructure Layer - 記錄技術錯誤詳情
 func (r *GormPointsAccountRepository) Update(...) error {
@@ -790,24 +816,31 @@ func (h *PointsHandler) HandleEarnPoints(c *gin.Context) {
 ## 常見問題 (FAQ)
 
 ### Q1: 為什麼使用 internal/ 目錄？
+
 **A**: Go 的 `internal/` 目錄是語言級別的可見性控制，防止外部包 import 內部代碼，確保 API 邊界清晰。
 
 ### Q2: Domain Layer 可以依賴 Application Layer 的 DTO 嗎？
-**A**: 不可以直接依賴。Domain Layer 應該定義接口（如 `PointsCalculableTransaction`），由 Application Layer 的 DTO 實現。詳見 [02-Domain Layer 實現指南](./02-domain-layer-implementation.md) 第 2.10 節。
+
+**A**: 不可以直接依賴。Domain Layer 應該定義接口（如 `PointsCalculableTransaction` ），由 Application Layer 的 DTO 實現。詳見 [02-Domain Layer 實現指南](./02-domain-layer-implementation.md) 第 2.10 節。
 
 ### Q3: 如何避免 Repository 洩漏 GORM 模型到 Domain Layer？
+
 **A**: Repository 在 Infrastructure Layer 進行 GORM Model ↔ Domain Entity 的轉換，使用 Domain Layer 提供的 `Reconstruct*` 方法重建聚合。詳見 [04-Infrastructure Layer 實現指南](./04-infrastructure-layer-implementation.md) 第 4.2 節。
 
 ### Q4: 事務管理應該放在哪一層？
+
 **A**: Application Layer 使用 Transaction Context Pattern 管理事務。詳見 [03-Application Layer 實現指南](./03-application-layer-implementation.md) 第 3.4 節。
 
 ### Q5: 如何處理跨上下文的數據查詢？
+
 **A**: 使用 DTO + Application Layer 協調。避免 Domain Layer 直接引用其他上下文的實體。詳見 [03-Application Layer 實現指南](./03-application-layer-implementation.md) 第 3.5 節。
 
 ### Q6: 領域事件應該如何實現？
+
 **A**: Domain Layer 收集事件，Application Layer 在事務提交後發布事件。詳見 [02-Domain Layer 實現指南](./02-domain-layer-implementation.md) 第 6 節 和 DDD 文檔的 [14-事件處理實作指南](../ddd/14-event-handling-implementation.md)。
 
 ### Q7: 如何處理錯誤傳播？
+
 **A**: Domain 定義業務錯誤，Infrastructure 轉換技術錯誤，Application 透傳，Presentation 映射 HTTP 狀態碼。使用 `errors.Is` 和 `errors.As` 進行錯誤檢查。詳見上方「錯誤處理策略」章節。
 
 ---
@@ -815,35 +848,40 @@ func (h *PointsHandler) HandleEarnPoints(c *gin.Context) {
 ## 參考資料
 
 ### DDD 架構設計文檔
-- [DDD 指南總覽](../ddd/README.md)
-- [限界上下文劃分](../ddd/02-bounded-contexts.md)
-- [分層架構設計](../ddd/06-layered-architecture.md)
-- [依賴規則](../ddd/11-dependency-rules.md)
-- [聚合設計原則](../ddd/07-aggregate-design-principles.md)
+
+* [DDD 指南總覽](../ddd/README.md)
+* [限界上下文劃分](../ddd/02-bounded-contexts.md)
+* [分層架構設計](../ddd/06-layered-architecture.md)
+* [依賴規則](../ddd/11-dependency-rules.md)
+* [聚合設計原則](../ddd/07-aggregate-design-principles.md)
 
 ### Go 語言最佳實踐
-- [Effective Go](https://go.dev/doc/effective_go)
-- [Go Code Review Comments](https://github.com/golang/go/wiki/CodeReviewComments)
-- [Standard Package Layout](https://github.com/golang-standards/project-layout)
+
+* [Effective Go](https://go.dev/doc/effective_go)
+* [Go Code Review Comments](https://github.com/golang/go/wiki/CodeReviewComments)
+* [Standard Package Layout](https://github.com/golang-standards/project-layout)
 
 ### Clean Architecture
-- Robert C. Martin - "Clean Architecture: A Craftsman's Guide to Software Structure and Design"
-- [The Clean Architecture Blog Post](https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html)
+
+* Robert C. Martin - "Clean Architecture: A Craftsman's Guide to Software Structure and Design"
+* [The Clean Architecture Blog Post](https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html)
 
 ---
 
 ## 維護指南
 
 ### 文檔更新原則
+
 1. **架構設計變更** → 先更新 DDD 文檔（設計層），再更新實現指南（技術層）
 2. **新增上下文** → 按照現有模式添加對應章節
 3. **代碼範例** → 保持與實際代碼同步
 4. **版本管理** → 使用 ADR 記錄重大決策
 
 ### 文檔所有權
-- **DDD 文檔**（ddd/）: 架構師負責
-- **實現指南**（implementation/）: 技術負責人負責
-- **代碼實現**（internal/）: 開發團隊負責
+
+* **DDD 文檔**（ddd/）: 架構師負責
+* **實現指南**（implementation/）: 技術負責人負責
+* **代碼實現**（internal/）: 開發團隊負責
 
 ---
 

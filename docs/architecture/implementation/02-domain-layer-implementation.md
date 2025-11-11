@@ -11,12 +11,12 @@
 ### 1.1 職責定義
 
 **Domain Layer 的核心職責**:
-- ✅ 封裝業務邏輯與業務規則
-- ✅ 定義聚合根、實體、值對象
-- ✅ 定義領域服務（跨聚合的業務邏輯）
-- ✅ 定義 Repository 接口（由 Infrastructure 實現）
-- ✅ 發布領域事件（狀態變更的通知）
-- ❌ 不包含技術實現細節（無 GORM, HTTP, Redis）
+* ✅ 封裝業務邏輯與業務規則
+* ✅ 定義聚合根、實體、值對象
+* ✅ 定義領域服務（跨聚合的業務邏輯）
+* ✅ 定義 Repository 接口（由 Infrastructure 實現）
+* ✅ 發布領域事件（狀態變更的通知）
+* ❌ 不包含技術實現細節（無 GORM, HTTP, Redis）
 
 ### 1.2 設計原則
 
@@ -28,6 +28,7 @@
 5. **DIP (依賴反轉原則)**: 依賴接口而非實現
 
 **充血模型 (Rich Domain Model)**:
+
 ```go
 // ✅ 正確：業務邏輯封裝在聚合內部
 type PointsAccount struct {
@@ -72,7 +73,7 @@ package points
 import (
     "time"
     "github.com/shopspring/decimal"
-    "github.com/yourorg/bar_crm/internal/domain/shared"
+    "github.com/jackyeh168/bar_crm/internal/domain/shared"
 )
 
 // PointsAccount 積分帳戶聚合根
@@ -639,12 +640,13 @@ func (id MemberID) IsEmpty() bool {
 6. ✅ **自描述**: 類型名稱明確表達業務概念
 
 **何時使用值對象？**:
-- ✅ 基本類型需要業務規則驗證（電話號碼、Email）
-- ✅ 基本類型需要封裝業務邏輯（Money 的加減）
-- ✅ 組合多個字段形成業務概念（DateRange, Address）
-- ✅ 無需唯一標識符的業務概念
+* ✅ 基本類型需要業務規則驗證（電話號碼、Email）
+* ✅ 基本類型需要封裝業務邏輯（Money 的加減）
+* ✅ 組合多個字段形成業務概念（DateRange, Address）
+* ✅ 無需唯一標識符的業務概念
 
 **錯誤處理模式**:
+
 ```go
 // ✅ 正確：公開構造函數返回錯誤
 func NewPointsAmount(value int) (PointsAmount, error) {
@@ -693,10 +695,10 @@ func (p PointsAmount) Subtract(other PointsAmount) PointsAmount {
 ### 4.1 領域服務定義
 
 **何時使用領域服務？**:
-- ✅ 跨多個聚合的業務邏輯
-- ✅ 複雜的計算邏輯（Strategy Pattern）
-- ✅ 無狀態的純函數邏輯
-- ❌ 不用於協調多個聚合（那是 Application Layer 的職責）
+* ✅ 跨多個聚合的業務邏輯
+* ✅ 複雜的計算邏輯（Strategy Pattern）
+* ✅ 無狀態的純函數邏輯
+* ❌ 不用於協調多個聚合（那是 Application Layer 的職責）
 
 **文件**: `internal/domain/points/calculation_service.go`
 
@@ -832,8 +834,8 @@ type ConversionRuleService interface {
 package repository
 
 import (
-    "github.com/yourorg/bar_crm/internal/domain/points"
-    "github.com/yourorg/bar_crm/internal/domain/shared"
+    "github.com/jackyeh168/bar_crm/internal/domain/points"
+    "github.com/jackyeh168/bar_crm/internal/domain/shared"
 )
 
 // ===========================
@@ -906,6 +908,7 @@ var (
 5. ✅ **接口隔離**: 按使用場景拆分接口（Writer vs Reader）
 
 **錯誤處理**:
+
 ```go
 // ✅ 正確：Repository 返回 Domain 錯誤
 func (r *GormPointsAccountRepository) FindByID(...) (*points.PointsAccount, error) {
@@ -932,8 +935,8 @@ func (r *GormPointsAccountRepository) FindByID(...) (*points.PointsAccount, erro
 package points
 
 import (
-    "github.com/yourorg/bar_crm/internal/domain/points/repository"
-    "github.com/yourorg/bar_crm/internal/domain/points"
+    "github.com/jackyeh168/bar_crm/internal/domain/points/repository"
+    "github.com/jackyeh168/bar_crm/internal/domain/points"
 )
 
 // GetPointsBalanceUseCase 查詢積分餘額（只讀操作）
@@ -960,9 +963,9 @@ func (uc *GetPointsBalanceUseCase) Execute(memberID points.MemberID) (int, error
 ```
 
 **優勢**：
-- ✅ Use Case 只依賴讀接口，明確表達只做查詢
-- ✅ Mock 更簡單（只需 mock Reader，不需 mock Writer）
-- ✅ 防止誤用（無法調用寫方法）
+* ✅ Use Case 只依賴讀接口，明確表達只做查詢
+* ✅ Mock 更簡單（只需 mock Reader，不需 mock Writer）
+* ✅ 防止誤用（無法調用寫方法）
 
 #### 範例 2：需要讀寫操作的 Use Case
 
@@ -1006,9 +1009,9 @@ func (uc *EarnPointsUseCase) Execute(cmd EarnPointsCommand) error {
 ```
 
 **優勢**：
-- ✅ 讀寫職責分離，更清晰
-- ✅ 可以注入不同的實現（例如：讀從緩存，寫到數據庫）
-- ✅ Mock 更靈活（可以分別 mock Reader 和 Writer）
+* ✅ 讀寫職責分離，更清晰
+* ✅ 可以注入不同的實現（例如：讀從緩存，寫到數據庫）
+* ✅ Mock 更靈活（可以分別 mock Reader 和 Writer）
 
 #### 範例 3：Infrastructure 實現完整接口
 
@@ -1017,8 +1020,8 @@ func (uc *EarnPointsUseCase) Execute(cmd EarnPointsCommand) error {
 package points
 
 import (
-    "github.com/yourorg/bar_crm/internal/domain/points/repository"
-    "github.com/yourorg/bar_crm/internal/domain/points"
+    "github.com/jackyeh168/bar_crm/internal/domain/points/repository"
+    "github.com/jackyeh168/bar_crm/internal/domain/points"
 )
 
 // GormPointsAccountRepository 實現完整的 Repository 接口
@@ -1120,7 +1123,7 @@ func main() {
 | **讀寫分離** | 混在一起 | 清晰的讀寫分離 |
 | **擴展性** | 添加方法影響所有依賴者 | 只影響使用該子接口的依賴者 |
 
-**參考範例**：Audit Context 的接口設計（`01-directory-structure.md` L97-101）也遵循了相同的接口隔離原則。
+**參考範例**：Audit Context 的接口設計（ `01-directory-structure.md` L97-101）也遵循了相同的接口隔離原則。
 
 ---
 
@@ -1136,7 +1139,7 @@ package points
 import (
     "time"
     "github.com/google/uuid"
-    "github.com/yourorg/bar_crm/internal/domain/shared"
+    "github.com/jackyeh168/bar_crm/internal/domain/shared"
 )
 
 // --- PointsEarned 事件 ---
@@ -1386,45 +1389,45 @@ type EventHandler interface {
 ### Domain Layer 檢查清單
 
 **聚合根**:
-- [ ] 所有字段私有
-- [ ] 通過構造函數創建
-- [ ] 狀態變更通過方法（Tell, Don't Ask）
-- [ ] 不變性保護（業務規則檢查）
-- [ ] 發布領域事件
-- [ ] 輕量級設計（無無界集合）
-- [ ] 版本控制（樂觀鎖）
+* [ ] 所有字段私有
+* [ ] 通過構造函數創建
+* [ ] 狀態變更通過方法（Tell, Don't Ask）
+* [ ] 不變性保護（業務規則檢查）
+* [ ] 發布領域事件
+* [ ] 輕量級設計（無無界集合）
+* [ ] 版本控制（樂觀鎖）
 
 **值對象**:
-- [ ] 不可變性（無 setter）
-- [ ] 構造時驗證
-- [ ] 值相等性
-- [ ] 封裝業務邏輯
-- [ ] 自描述的類型名稱
+* [ ] 不可變性（無 setter）
+* [ ] 構造時驗證
+* [ ] 值相等性
+* [ ] 封裝業務邏輯
+* [ ] 自描述的類型名稱
 
 **領域服務**:
-- [ ] 無狀態
-- [ ] 純函數邏輯
-- [ ] 使用策略模式
-- [ ] 依賴接口
+* [ ] 無狀態
+* [ ] 純函數邏輯
+* [ ] 使用策略模式
+* [ ] 依賴接口
 
 **Repository 接口**:
-- [ ] 定義在 Domain Layer
-- [ ] 只依賴 Domain 實體
-- [ ] 使用 Transaction Context
-- [ ] 返回 Domain 錯誤
+* [ ] 定義在 Domain Layer
+* [ ] 只依賴 Domain 實體
+* [ ] 使用 Transaction Context
+* [ ] 返回 Domain 錯誤
 
 **領域事件**:
-- [ ] 不可變性
-- [ ] 過去式命名
-- [ ] 實現基礎接口
-- [ ] 包含完整信息
+* [ ] 不可變性
+* [ ] 過去式命名
+* [ ] 實現基礎接口
+* [ ] 包含完整信息
 
 **無外部依賴**:
-- [ ] 無 import `gorm`
-- [ ] 無 import `gin`
-- [ ] 無 import `redis`
-- [ ] 無 import `infrastructure`
-- [ ] 無 import `application`
+* [ ] 無 import `gorm`
+* [ ] 無 import `gin`
+* [ ] 無 import `redis`
+* [ ] 無 import `infrastructure`
+* [ ] 無 import `application`
 
 ---
 

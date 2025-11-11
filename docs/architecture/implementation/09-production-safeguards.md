@@ -1,12 +1,13 @@
 # 09 - 生產環境安全防護機制
 
 ## 目錄
-- [1. Panic Recovery 機制](#1-panic-recovery-機制)
-- [2. 告警與監控](#2-告警與監控)
-- [3. 降級策略](#3-降級策略)
-- [4. 健康檢查](#4-健康檢查)
-- [5. 錯誤追蹤與日誌](#5-錯誤追蹤與日誌)
-- [6. 生產環境最佳實踐](#6-生產環境最佳實踐)
+
+* [1. Panic Recovery 機制](#1-panic-recovery-機制)
+* [2. 告警與監控](#2-告警與監控)
+* [3. 降級策略](#3-降級策略)
+* [4. 健康檢查](#4-健康檢查)
+* [5. 錯誤追蹤與日誌](#5-錯誤追蹤與日誌)
+* [6. 生產環境最佳實踐](#6-生產環境最佳實踐)
 
 ---
 
@@ -15,8 +16,8 @@
 ### 1.1 為什麼需要 Panic Recovery？
 
 根據 Clean Architecture 的錯誤處理策略：
-- **業務錯誤**（可預期）→ 返回 `error`
-- **程序錯誤**（不變條件違反）→ `panic`
+* **業務錯誤**（可預期）→ 返回 `error`
+* **程序錯誤**（不變條件違反）→ `panic`
 
 在開發和測試環境中，panic 應該立即暴露問題。但在生產環境中，我們需要：
 1. 捕獲 panic，避免整個服務崩潰
@@ -27,6 +28,7 @@
 ### 1.2 HTTP Panic Recovery Middleware
 
 #### 文件位置
+
 ```
 internal/presentation/http/middleware/recovery.go
 ```
@@ -44,7 +46,7 @@ import (
     "github.com/gin-gonic/gin"
     "go.uber.org/zap"
 
-    "github.com/yourorg/bar_crm/internal/infrastructure/monitoring"
+    "github.com/jackyeh168/bar_crm/internal/infrastructure/monitoring"
 )
 
 // RecoveryMiddleware 捕獲 panic 並進行錯誤處理
@@ -132,9 +134,9 @@ func setupRouter(
 ### 1.3 Application Layer Panic Recovery
 
 對於 Use Case 層的 panic（非 HTTP 請求觸發的場景），例如：
-- 定時任務
-- 事件處理器
-- 背景任務
+* 定時任務
+* 事件處理器
+* 背景任務
 
 需要在每個入口點進行 recovery：
 
@@ -183,6 +185,7 @@ func (h *PointsEarnedHandler) Handle(event shared.DomainEvent) error {
 ### 2.1 告警系統介面
 
 #### 文件位置
+
 ```
 internal/infrastructure/monitoring/alerter.go
 ```
@@ -791,15 +794,15 @@ CIRCUIT_BREAKER_RESET_TIMEOUT=60s
 ### 6.2 部署清單
 
 **部署前檢查清單**:
-- [ ] Recovery Middleware 已啟用
-- [ ] 告警系統已配置（Slack Webhook）
-- [ ] Prometheus 監控已啟用
-- [ ] 健康檢查端點可訪問
-- [ ] 日誌級別設置為 INFO（生產環境）
-- [ ] 數據庫連接池配置正確
-- [ ] Redis fallback 機制已測試
-- [ ] Jaeger 分佈式追蹤已啟用
-- [ ] Kubernetes Liveness/Readiness Probe 已配置
+* [ ] Recovery Middleware 已啟用
+* [ ] 告警系統已配置（Slack Webhook）
+* [ ] Prometheus 監控已啟用
+* [ ] 健康檢查端點可訪問
+* [ ] 日誌級別設置為 INFO（生產環境）
+* [ ] 數據庫連接池配置正確
+* [ ] Redis fallback 機制已測試
+* [ ] Jaeger 分佈式追蹤已啟用
+* [ ] Kubernetes Liveness/Readiness Probe 已配置
 
 ### 6.3 運維手冊
 
