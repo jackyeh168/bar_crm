@@ -178,14 +178,20 @@ func NewDateRange(startDate, endDate time.Time) (DateRange, error) {
 	}, nil
 }
 
-// StartDate 獲取開始日期
-func (dr DateRange) StartDate() time.Time {
-	return dr.startDate
-}
-
-// EndDate 獲取結束日期
-func (dr DateRange) EndDate() time.Time {
-	return dr.endDate
+// DurationDays 計算日期範圍的天數（包含起始和結束日）
+//
+// 業務規則：
+// - 返回範圍內的總天數（包含邊界）
+// - 例如：2024-01-01 到 2024-01-03 返回 3 天
+//
+// 使用場景：
+// - 計算促銷活動持續時間
+// - 報表統計時間跨度
+// - 驗證規則有效期長度
+func (dr DateRange) DurationDays() int {
+	duration := dr.endDate.Sub(dr.startDate)
+	days := int(duration.Hours()/24) + 1 // +1 因為包含起始日
+	return days
 }
 
 // Contains 判斷指定日期是否在範圍內（包含邊界）
@@ -234,6 +240,7 @@ func (dr DateRange) Overlaps(other DateRange) bool {
 // - 使用 iota 自動遞增
 // - 提供 String() 方法用於日誌和調試
 // - 提供 IsValid() 方法驗證枚舉值有效性
+// - 零值（Undefined）用於檢測未初始化的枚舉
 //
 // 版本規劃：
 // - V3.1: Invoice, Survey（核心功能）
@@ -243,37 +250,48 @@ func (dr DateRange) Overlaps(other DateRange) bool {
 type PointsSource int
 
 const (
-	PointsSourceInvoice    PointsSource = iota // 發票：消費獲得積分
+	PointsSourceUndefined  PointsSource = iota // 未定義：檢測未初始化的枚舉（零值）
+	PointsSourceInvoice                        // 發票：消費獲得積分
 	PointsSourceSurvey                         // 問卷：完成問卷獎勵積分
 	PointsSourceRedemption                     // 兌換：使用積分兌換商品（負積分）（V3.2+）
 	PointsSourceExpiration                     // 過期：積分過期扣除（負積分）（V3.3+）
 	PointsSourceTransfer                       // 轉讓：積分轉讓給他人（V4.0+）
 )
 
-// String 返回積分來源的字符串表示
+// String 返回積分來源的字符串表示（僅用於調試和日誌）
+//
+// 設計原則：
+// - 領域層不應知道 API 格式（JSON、XML 等）
+// - String() 僅用於調試、日誌記錄
+// - API 響應格式應由 interface adapters 層處理
 //
 // 用途：
-// - 日誌記錄
-// - API 響應
-// - 數據庫存儲（配合 GORM 的 String 類型）
+// - 日誌記錄：fmt.Printf("source: %s", source)
+// - 調試輸出：便於開發時查看枚舉值
+// - 錯誤訊息：包含在 error context 中
 //
 // 返回值：
-// - 小寫英文字符串（符合 JSON API 慣例）
-// - "unknown" 表示無效的枚舉值
+// - Go 風格的枚舉字符串："PointsSource(Invoice)"
+// - "PointsSource(Undefined)" 表示未初始化
+// - "PointsSource(Unknown)" 表示無效值
+//
+// 注意：如需 API 響應格式（如 JSON），請使用 interface adapters 層的轉換函數
 func (s PointsSource) String() string {
 	switch s {
+	case PointsSourceUndefined:
+		return "PointsSource(Undefined)"
 	case PointsSourceInvoice:
-		return "invoice"
+		return "PointsSource(Invoice)"
 	case PointsSourceSurvey:
-		return "survey"
+		return "PointsSource(Survey)"
 	case PointsSourceRedemption:
-		return "redemption"
+		return "PointsSource(Redemption)"
 	case PointsSourceExpiration:
-		return "expiration"
+		return "PointsSource(Expiration)"
 	case PointsSourceTransfer:
-		return "transfer"
+		return "PointsSource(Transfer)"
 	default:
-		return "unknown"
+		return "PointsSource(Unknown)"
 	}
 }
 
@@ -282,10 +300,11 @@ func (s PointsSource) String() string {
 // 用途：
 // - 驗證從外部輸入（API、數據庫）讀取的枚舉值
 // - 防禦性編程，避免使用無效枚舉值
+// - 檢測未初始化的枚舉（Undefined 不是有效值）
 //
 // 返回值：
-// - true: 枚舉值在有效範圍內
-// - false: 枚舉值無效（如從損壞的數據庫讀取）
+// - true: 枚舉值在有效範圍內（不包含 Undefined）
+// - false: 枚舉值無效（包括 Undefined 和超出範圍的值）
 func (s PointsSource) IsValid() bool {
 	return s >= PointsSourceInvoice && s <= PointsSourceTransfer
 }

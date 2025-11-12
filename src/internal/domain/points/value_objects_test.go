@@ -388,10 +388,11 @@ func TestNewDateRange_ValidRange_Success(t *testing.T) {
 	// Act
 	dr, err := points.NewDateRange(start, end)
 
-	// Assert
+	// Assert - 使用業務行為驗證，而非檢查內部狀態
 	assert.NoError(t, err)
-	assert.Equal(t, start, dr.StartDate())
-	assert.Equal(t, end, dr.EndDate())
+	assert.True(t, dr.Contains(start), "應該包含起始日期")
+	assert.True(t, dr.Contains(end), "應該包含結束日期")
+	assert.Equal(t, 366, dr.DurationDays(), "2024 年（閏年）從 1/1 到 12/31 應該是 366 天")
 }
 
 // Test 25: NewDateRange 同一天
@@ -402,10 +403,10 @@ func TestNewDateRange_SameDay_Success(t *testing.T) {
 	// Act
 	dr, err := points.NewDateRange(sameDay, sameDay)
 
-	// Assert
+	// Assert - 使用業務行為驗證
 	assert.NoError(t, err)
-	assert.Equal(t, sameDay, dr.StartDate())
-	assert.Equal(t, sameDay, dr.EndDate())
+	assert.True(t, dr.Contains(sameDay), "應該包含該日期")
+	assert.Equal(t, 1, dr.DurationDays(), "同一天的範圍應該是 1 天")
 }
 
 // Test 26: NewDateRange 開始日期晚於結束日期
@@ -415,13 +416,11 @@ func TestNewDateRange_StartAfterEnd_ReturnsError(t *testing.T) {
 	end := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 
 	// Act
-	dr, err := points.NewDateRange(start, end)
+	_, err := points.NewDateRange(start, end)
 
-	// Assert
+	// Assert - 聚焦於錯誤本身，不檢查內部狀態
 	assert.Error(t, err)
 	assert.ErrorIs(t, err, points.ErrInvalidDateRange)
-	assert.True(t, dr.StartDate().IsZero())
-	assert.True(t, dr.EndDate().IsZero())
 }
 
 // Test 27: DateRange Contains - 日期在範圍內
@@ -595,20 +594,67 @@ func TestDateRange_Overlaps_EdgeTouch(t *testing.T) {
 	assert.False(t, result)
 }
 
+// Test 37: DateRange DurationDays - 計算天數
+func TestDateRange_DurationDays(t *testing.T) {
+	tests := []struct {
+		name     string
+		start    time.Time
+		end      time.Time
+		expected int
+	}{
+		{
+			name:     "同一天",
+			start:    time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+			end:      time.Date(2024, 1, 1, 23, 59, 59, 0, time.UTC),
+			expected: 1,
+		},
+		{
+			name:     "連續三天",
+			start:    time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+			end:      time.Date(2024, 1, 3, 0, 0, 0, 0, time.UTC),
+			expected: 3,
+		},
+		{
+			name:     "整個月",
+			start:    time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+			end:      time.Date(2024, 1, 31, 0, 0, 0, 0, time.UTC),
+			expected: 31,
+		},
+		{
+			name:     "跨年度",
+			start:    time.Date(2023, 12, 31, 0, 0, 0, 0, time.UTC),
+			end:      time.Date(2024, 1, 2, 0, 0, 0, 0, time.UTC),
+			expected: 3,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Act
+			dr, err := points.NewDateRange(tt.start, tt.end)
+
+			// Assert
+			assert.NoError(t, err)
+			assert.Equal(t, tt.expected, dr.DurationDays())
+		})
+	}
+}
+
 // ===== PointsSource 測試 =====
 
-// Test 37: PointsSource String 方法
+// Test 38: PointsSource String 方法（調試格式）
 func TestPointsSource_String(t *testing.T) {
 	tests := []struct {
 		name     string
 		source   points.PointsSource
 		expected string
 	}{
-		{"發票來源", points.PointsSourceInvoice, "invoice"},
-		{"問卷來源", points.PointsSourceSurvey, "survey"},
-		{"兌換來源", points.PointsSourceRedemption, "redemption"},
-		{"過期來源", points.PointsSourceExpiration, "expiration"},
-		{"轉讓來源", points.PointsSourceTransfer, "transfer"},
+		{"未定義來源", points.PointsSourceUndefined, "PointsSource(Undefined)"},
+		{"發票來源", points.PointsSourceInvoice, "PointsSource(Invoice)"},
+		{"問卷來源", points.PointsSourceSurvey, "PointsSource(Survey)"},
+		{"兌換來源", points.PointsSourceRedemption, "PointsSource(Redemption)"},
+		{"過期來源", points.PointsSourceExpiration, "PointsSource(Expiration)"},
+		{"轉讓來源", points.PointsSourceTransfer, "PointsSource(Transfer)"},
 	}
 
 	for _, tt := range tests {
@@ -616,13 +662,13 @@ func TestPointsSource_String(t *testing.T) {
 			// Act
 			result := tt.source.String()
 
-			// Assert
+			// Assert - 驗證調試格式，不是 API 格式
 			assert.Equal(t, tt.expected, result)
 		})
 	}
 }
 
-// Test 38: PointsSource 未知類型
+// Test 39: PointsSource 未知類型
 func TestPointsSource_String_Unknown(t *testing.T) {
 	// Arrange
 	unknownSource := points.PointsSource(999)
@@ -630,11 +676,11 @@ func TestPointsSource_String_Unknown(t *testing.T) {
 	// Act
 	result := unknownSource.String()
 
-	// Assert
-	assert.Equal(t, "unknown", result)
+	// Assert - 驗證調試格式
+	assert.Equal(t, "PointsSource(Unknown)", result)
 }
 
-// Test 39: PointsSource IsValid 方法
+// Test 40: PointsSource IsValid 方法
 func TestPointsSource_IsValid(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -648,7 +694,7 @@ func TestPointsSource_IsValid(t *testing.T) {
 		{"Transfer 有效", points.PointsSourceTransfer, true},
 		{"負數無效", points.PointsSource(-1), false},
 		{"超出範圍無效", points.PointsSource(999), false},
-		{"零值無效", points.PointsSource(0), true}, // 0 is PointsSourceInvoice
+		{"零值（Undefined）無效", points.PointsSourceUndefined, false}, // 0 is PointsSourceUndefined now
 	}
 
 	for _, tt := range tests {
