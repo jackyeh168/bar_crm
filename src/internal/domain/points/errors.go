@@ -22,6 +22,12 @@ const (
 	// 帳戶相關
 	ErrCodeInvalidAccountID ErrorCode = "ACCOUNT_ID_INVALID"
 	ErrCodeInvalidMemberID  ErrorCode = "MEMBER_ID_INVALID"
+
+	// 日期範圍相關
+	ErrCodeInvalidDateRange ErrorCode = "DATE_RANGE_INVALID"
+
+	// 積分來源相關
+	ErrCodeInvalidPointsSource ErrorCode = "POINTS_SOURCE_INVALID"
 )
 
 // ===========================
@@ -125,5 +131,21 @@ var (
 	ErrInvalidMemberID = &DomainError{
 		Code:    ErrCodeInvalidMemberID,
 		Message: "無效的會員 ID",
+	}
+)
+
+// 日期範圍相關錯誤
+var (
+	ErrInvalidDateRange = &DomainError{
+		Code:    ErrCodeInvalidDateRange,
+		Message: "無效的日期範圍（開始日期必須 <= 結束日期）",
+	}
+)
+
+// 積分來源相關錯誤
+var (
+	ErrInvalidPointsSource = &DomainError{
+		Code:    ErrCodeInvalidPointsSource,
+		Message: "無效的積分來源",
 	}
 )

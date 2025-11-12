@@ -1,5 +1,9 @@
 package points
 
+import (
+	"time"
+)
+
 // PointsAmount 積分數量值對象
 // 建構約束：積分數量必須 >= 0（不存在負數積分的概念）
 type PointsAmount struct {
@@ -128,3 +132,160 @@ func (r ConversionRate) Equals(other ConversionRate) bool {
 // 新實現：使用泛型 shared.EntityID[T] + 類型別名
 // 代碼減少：64 行 → 20 行（包含註釋）
 // 見 identifiers.go 和 shared/entity_id.go
+
+// ===========================
+// DateRange 日期範圍值對象
+// ===========================
+
+// DateRange 日期範圍值對象
+// 建構約束：startDate 必須 <= endDate
+//
+// 用途：
+// - 積分轉換規則的有效期間
+// - 促銷活動的時間範圍
+// - 報表查詢的日期範圍
+//
+// 設計原則：
+// - 不可變性：time.Time 本身是值類型
+// - 自我驗證：建構函數檢查日期範圍有效性
+// - 業務方法：Contains、Overlaps
+type DateRange struct {
+	startDate time.Time
+	endDate   time.Time
+}
+
+// NewDateRange 創建日期範圍
+//
+// 建構約束：startDate 必須 <= endDate
+//
+// 參數：
+//   startDate - 開始日期（包含）
+//   endDate - 結束日期（包含）
+//
+// 返回：
+//   DateRange - 有效的日期範圍
+//   error - 如果 startDate > endDate
+func NewDateRange(startDate, endDate time.Time) (DateRange, error) {
+	if startDate.After(endDate) {
+		return DateRange{}, ErrInvalidDateRange.WithContext(
+			"start_date", startDate,
+			"end_date", endDate,
+		)
+	}
+	return DateRange{
+		startDate: startDate,
+		endDate:   endDate,
+	}, nil
+}
+
+// StartDate 獲取開始日期
+func (dr DateRange) StartDate() time.Time {
+	return dr.startDate
+}
+
+// EndDate 獲取結束日期
+func (dr DateRange) EndDate() time.Time {
+	return dr.endDate
+}
+
+// Contains 判斷指定日期是否在範圍內（包含邊界）
+//
+// 業務規則：
+// - 如果 date >= startDate AND date <= endDate，返回 true
+// - 邊界日期被認為在範圍內
+//
+// 使用場景：
+// - 判斷轉換規則在特定日期是否有效
+// - 檢查交易日期是否在促銷期間內
+func (dr DateRange) Contains(date time.Time) bool {
+	return !date.Before(dr.startDate) && !date.After(dr.endDate)
+}
+
+// Overlaps 判斷是否與另一個日期範圍重疊
+//
+// 業務規則：
+// - 如果兩個範圍有任何交集，返回 true
+// - 邊界接觸不算重疊（例如 [2024-01-01, 2024-01-31] 和 [2024-02-01, 2024-02-28]）
+//
+// 使用場景：
+// - 檢查轉換規則是否與其他規則衝突
+// - 驗證促銷活動時間不重疊
+//
+// 算法說明：
+// 兩個範圍 [a1, a2] 和 [b1, b2] 重疊的條件：
+// - a1 < b2 AND b1 < a2
+// 反之則不重疊
+func (dr DateRange) Overlaps(other DateRange) bool {
+	return dr.startDate.Before(other.endDate) && other.startDate.Before(dr.endDate)
+}
+
+// ===========================
+// PointsSource 積分來源枚舉
+// ===========================
+
+// PointsSource 積分來源枚舉
+//
+// 用途：標識積分的來源，用於：
+// - 積分交易記錄追蹤
+// - 報表分類統計
+// - 業務規則判斷（如某些來源的積分不可轉讓）
+//
+// 設計原則：
+// - 使用 iota 自動遞增
+// - 提供 String() 方法用於日誌和調試
+// - 提供 IsValid() 方法驗證枚舉值有效性
+//
+// 版本規劃：
+// - V3.1: Invoice, Survey（核心功能）
+// - V3.2: Redemption（積分兌換）
+// - V3.3: Expiration（積分過期）
+// - V4.0: Transfer（積分轉讓）
+type PointsSource int
+
+const (
+	PointsSourceInvoice    PointsSource = iota // 發票：消費獲得積分
+	PointsSourceSurvey                         // 問卷：完成問卷獎勵積分
+	PointsSourceRedemption                     // 兌換：使用積分兌換商品（負積分）（V3.2+）
+	PointsSourceExpiration                     // 過期：積分過期扣除（負積分）（V3.3+）
+	PointsSourceTransfer                       // 轉讓：積分轉讓給他人（V4.0+）
+)
+
+// String 返回積分來源的字符串表示
+//
+// 用途：
+// - 日誌記錄
+// - API 響應
+// - 數據庫存儲（配合 GORM 的 String 類型）
+//
+// 返回值：
+// - 小寫英文字符串（符合 JSON API 慣例）
+// - "unknown" 表示無效的枚舉值
+func (s PointsSource) String() string {
+	switch s {
+	case PointsSourceInvoice:
+		return "invoice"
+	case PointsSourceSurvey:
+		return "survey"
+	case PointsSourceRedemption:
+		return "redemption"
+	case PointsSourceExpiration:
+		return "expiration"
+	case PointsSourceTransfer:
+		return "transfer"
+	default:
+		return "unknown"
+	}
+}
+
+// IsValid 判斷積分來源是否有效
+//
+// 用途：
+// - 驗證從外部輸入（API、數據庫）讀取的枚舉值
+// - 防禦性編程，避免使用無效枚舉值
+//
+// 返回值：
+// - true: 枚舉值在有效範圍內
+// - false: 枚舉值無效（如從損壞的數據庫讀取）
+func (s PointsSource) IsValid() bool {
+	return s >= PointsSourceInvoice && s <= PointsSourceTransfer
+}
