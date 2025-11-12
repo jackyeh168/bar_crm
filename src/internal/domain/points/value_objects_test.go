@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/jackyeh168/bar_crm/src/internal/domain/points"
-	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -223,82 +222,9 @@ func TestNewConversionRate_InvalidRate_ReturnsError(t *testing.T) {
 	}
 }
 
-// Test 12: CalculatePoints 標準轉換（核心業務邏輯）
-func TestConversionRate_CalculatePoints(t *testing.T) {
-	tests := []struct {
-		name           string
-		conversionRate int
-		amount         string // decimal string
-		expectedPoints int
-	}{
-		{
-			name:           "標準轉換 100 TWD = 1 點",
-			conversionRate: 100,
-			amount:         "350.00",
-			expectedPoints: 3, // floor(350/100) = 3
-		},
-		{
-			name:           "促銷轉換 50 TWD = 1 點",
-			conversionRate: 50,
-			amount:         "125.00",
-			expectedPoints: 2, // floor(125/50) = 2
-		},
-		{
-			name:           "小數金額向下取整",
-			conversionRate: 100,
-			amount:         "99.99",
-			expectedPoints: 0, // floor(99.99/100) = 0
-		},
-		{
-			name:           "剛好整除",
-			conversionRate: 100,
-			amount:         "500.00",
-			expectedPoints: 5, // floor(500/100) = 5
-		},
-		{
-			name:           "零金額",
-			conversionRate: 100,
-			amount:         "0.00",
-			expectedPoints: 0,
-		},
-		{
-			name:           "1 元 = 1 點（極端情況）",
-			conversionRate: 1,
-			amount:         "5.50",
-			expectedPoints: 5, // floor(5.50/1) = 5
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// Arrange
-			rate, err := points.NewConversionRate(tt.conversionRate)
-			assert.NoError(t, err)
-
-			amount, err := decimal.NewFromString(tt.amount)
-			assert.NoError(t, err)
-
-			// Act
-			result := rate.CalculatePoints(amount)
-
-			// Assert
-			assert.Equal(t, tt.expectedPoints, result.Value())
-		})
-	}
-}
-
-// Test 13: CalculatePoints 負數金額（理論上不應該發生）
-func TestConversionRate_CalculatePoints_NegativeAmount(t *testing.T) {
-	// Arrange
-	rate, _ := points.NewConversionRate(100)
-	negativeAmount := decimal.NewFromFloat(-50.00)
-
-	// Act
-	result := rate.CalculatePoints(negativeAmount)
-
-	// Assert: 應該返回 0（向下取整的結果）
-	assert.Equal(t, 0, result.Value())
-}
+// NOTE: CalculatePoints 測試已移至 services_test.go
+// 原因：CalculatePoints 違反 DIP，已移至 PointsCalculationService
+// 見 Uncle Bob Code Review - Day 2 Critical Issue #1
 
 // ===== AccountID 測試 =====
 

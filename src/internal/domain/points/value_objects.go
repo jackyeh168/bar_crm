@@ -1,10 +1,5 @@
 package points
 
-import (
-	"github.com/google/uuid"
-	"github.com/shopspring/decimal"
-)
-
 // PointsAmount 積分數量值對象
 // 建構約束：積分數量必須 >= 0（不存在負數積分的概念）
 type PointsAmount struct {
@@ -123,85 +118,13 @@ func (r ConversionRate) Equals(other ConversionRate) bool {
 	return r.value == other.value
 }
 
-// CalculatePoints 計算積分
-// 積分 = floor(金額 / 轉換率)
-//
-// TODO (Uncle Bob Review): 違反 SRP - 業務邏輯應該在 PointsCalculationService (Domain Service)
-// 這個方法將在 Day 6 重構時移除
-func (r ConversionRate) CalculatePoints(amount decimal.Decimal) PointsAmount {
-	rate := decimal.NewFromInt(int64(r.value))
-	points := amount.Div(rate).Floor().IntPart()
+// NOTE: CalculatePoints 方法已移除
+// 原因：違反依賴倒置原則（DIP）- ConversionRate 不應依賴 PointsAmount
+// 替代方案：使用 PointsCalculationService.CalculateFromAmount()
+// 見 services.go 和 Uncle Bob Code Review - Day 2 Critical Issue #1
 
-	// 確保返回的積分 >= 0（處理負數金額）
-	if points < 0 {
-		return newPointsAmountUnchecked(0)
-	}
-
-	return newPointsAmountUnchecked(int(points))
-}
-
-// AccountID 帳戶 ID 值對象（UUID 封裝）
-// TODO (Uncle Bob Review): AccountID 和 MemberID 有 80+ 行重複代碼
-// 建議在 Week 1 結束時使用 Go 泛型重構（EntityID[T]）
-type AccountID struct {
-	value uuid.UUID
-}
-
-func NewAccountID() AccountID {
-	return AccountID{value: uuid.New()}
-}
-
-func AccountIDFromString(s string) (AccountID, error) {
-	id, err := uuid.Parse(s)
-	if err != nil {
-		return AccountID{}, ErrInvalidAccountID.WithContext(
-			"input", s,
-			"parse_error", err.Error(),
-		)
-	}
-	return AccountID{value: id}, nil
-}
-
-func (a AccountID) String() string {
-	return a.value.String()
-}
-
-func (a AccountID) Equals(other AccountID) bool {
-	return a.value == other.value
-}
-
-func (a AccountID) IsEmpty() bool {
-	return a.value == uuid.Nil
-}
-
-// MemberID 會員 ID 值對象（UUID 封裝）
-type MemberID struct {
-	value uuid.UUID
-}
-
-func NewMemberID() MemberID {
-	return MemberID{value: uuid.New()}
-}
-
-func MemberIDFromString(s string) (MemberID, error) {
-	id, err := uuid.Parse(s)
-	if err != nil {
-		return MemberID{}, ErrInvalidMemberID.WithContext(
-			"input", s,
-			"parse_error", err.Error(),
-		)
-	}
-	return MemberID{value: id}, nil
-}
-
-func (m MemberID) String() string {
-	return m.value.String()
-}
-
-func (m MemberID) Equals(other MemberID) bool {
-	return m.value == other.value
-}
-
-func (m MemberID) IsEmpty() bool {
-	return m.value == uuid.Nil
-}
+// NOTE: AccountID 和 MemberID 實現已移至 identifiers.go
+// 原因：消除 82% 代碼重複（Uncle Bob Code Review - Day 2 Critical Issue #2）
+// 新實現：使用泛型 shared.EntityID[T] + 類型別名
+// 代碼減少：64 行 → 20 行（包含註釋）
+// 見 identifiers.go 和 shared/entity_id.go
