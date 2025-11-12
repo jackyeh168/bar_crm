@@ -1,28 +1,23 @@
 package points
 
 import (
-	"fmt"
-
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
 )
 
 // PointsAmount 積分數量值對象
-// 設計原則：值對象不可變、自我驗證
+// 建構約束：積分數量必須 >= 0（不存在負數積分的概念）
 type PointsAmount struct {
 	value int
 }
 
 // NewPointsAmount 建構函數（checked 版本）
 // 對外部輸入進行完整驗證
-//
-// 建構約束：積分數量必須 >= 0（不存在負數積分的概念）
 func NewPointsAmount(value int) (PointsAmount, error) {
 	if value < 0 {
-		return PointsAmount{}, fmt.Errorf(
-			"%w: attempted to create PointsAmount with value %d",
-			ErrNegativePointsAmount,
-			value,
+		return PointsAmount{}, ErrNegativePointsAmount.WithContext(
+			"attempted_value", value,
+			"constraint", ">= 0",
 		)
 	}
 	return PointsAmount{value: value}, nil
@@ -41,208 +36,172 @@ func newPointsAmountUnchecked(value int) PointsAmount {
 	return PointsAmount{value: value}
 }
 
-// Value 獲取積分數量
 func (p PointsAmount) Value() int {
 	return p.value
 }
 
-// Add 相加（返回新的 PointsAmount，保持不變性）
-//
-// 設計假設：
-// 在生產系統中，積分受業務規則限制（例如：單帳戶最多 1,000,000 點）
-// 因此整數溢位在實際業務場景中不會發生
-//
-// 如果需要處理任意大的積分數量，應使用 big.Int 或在聚合根層面強制上限
-func (p PointsAmount) Add(other PointsAmount) PointsAmount {
-	return newPointsAmountUnchecked(p.value + other.value)
+// IsZero 判斷積分數量是否為零
+func (p PointsAmount) IsZero() bool {
+	return p.value == 0
 }
 
-// Subtract 相減（返回新的 PointsAmount）
-// 業務規則：不能扣除超過當前數量的積分
-func (p PointsAmount) Subtract(other PointsAmount) (PointsAmount, error) {
-	// 檢查業務規則：餘額是否足夠
-	if p.value < other.value {
-		// 這是業務規則違反，不是建構約束違反
-		return PointsAmount{}, fmt.Errorf(
-			"%w: cannot subtract %d from %d (insufficient balance)",
-			ErrInsufficientPoints,
-			other.value,
-			p.value,
+// Add 相加（返回新的 PointsAmount，保持不變性）
+// 包含溢出檢測，確保數據完整性
+func (p PointsAmount) Add(other PointsAmount) (PointsAmount, error) {
+	// 檢測整數溢出：如果 sum < p.value，表示發生溢出
+	// 因為兩個非負數相加，結果應該 >= 較大的操作數
+	const maxInt = int(^uint(0) >> 1) // 2147483647 for 32-bit, much larger for 64-bit
+
+	if p.value > maxInt-other.value {
+		return PointsAmount{}, ErrInvalidPointsAmount.WithContext(
+			"operation", "add",
+			"operand1", p.value,
+			"operand2", other.value,
+			"error", "integer overflow",
 		)
 	}
 
-	// 已經保證 result >= 0，可以安全使用 unchecked 建構
+	sum := p.value + other.value
+	return newPointsAmountUnchecked(sum), nil
+}
+
+// Subtract 相減（返回新的 PointsAmount）
+// 建構約束：結果必須 >= 0（不能創建負數積分）
+func (p PointsAmount) Subtract(other PointsAmount) (PointsAmount, error) {
+	if p.value < other.value {
+		return PointsAmount{}, ErrNegativePointsAmount.WithContext(
+			"operation", "subtract",
+			"minuend", p.value,
+			"subtrahend", other.value,
+			"result", p.value-other.value,
+		)
+	}
+
 	result := p.value - other.value
 	return newPointsAmountUnchecked(result), nil
 }
 
-// Equals 比較兩個 PointsAmount 是否相等
 func (p PointsAmount) Equals(other PointsAmount) bool {
 	return p.value == other.value
 }
 
-// GreaterThan 判斷是否大於另一個 PointsAmount
 func (p PointsAmount) GreaterThan(other PointsAmount) bool {
 	return p.value > other.value
 }
 
-// LessThan 判斷是否小於另一個 PointsAmount
 func (p PointsAmount) LessThan(other PointsAmount) bool {
 	return p.value < other.value
 }
 
-// GreaterThanOrEqual 判斷是否大於等於另一個 PointsAmount
 func (p PointsAmount) GreaterThanOrEqual(other PointsAmount) bool {
 	return p.value >= other.value
 }
 
 // ConversionRate 轉換率值對象（例如 100 元 = 1 點）
-// 設計原則：值對象不可變、自我驗證
-//
-// 業務規則：範圍 1-1000
-// - 最小值 1：表示 1 元 = 1 點（極端促銷）
-// - 最大值 1000：表示 1000 元 = 1 點（極低回饋率）
-// - 標準值 100：表示 100 元 = 1 點（常見設定）
+// 建構約束：範圍 1-1000
 type ConversionRate struct {
 	value int
 }
 
-// NewConversionRate 建構函數（checked 版本）
-// 對外部輸入進行完整驗證
-//
+// NewConversionRate 建構函數
 // 建構約束：轉換率必須在 1-1000 範圍內
 func NewConversionRate(value int) (ConversionRate, error) {
 	if value < 1 || value > 1000 {
-		return ConversionRate{}, fmt.Errorf(
-			"%w: attempted to create ConversionRate with value %d (must be 1-1000)",
-			ErrInvalidConversionRate,
-			value,
+		return ConversionRate{}, ErrInvalidConversionRate.WithContext(
+			"attempted_value", value,
+			"constraint", "1-1000",
 		)
 	}
 	return ConversionRate{value: value}, nil
 }
 
-// Value 獲取轉換率值
 func (r ConversionRate) Value() int {
 	return r.value
 }
 
-// Equals 比較兩個 ConversionRate 是否相等
 func (r ConversionRate) Equals(other ConversionRate) bool {
 	return r.value == other.value
 }
 
-// CalculatePoints 計算積分（核心業務邏輯）
+// CalculatePoints 計算積分
 // 積分 = floor(金額 / 轉換率)
 //
-// 設計原則：
-// 1. 使用向下取整（floor）：99.99 元在 100 TWD/點 的規則下為 0 點
-// 2. 處理負數金額：返回 0 點（理論上不應該發生）
-// 3. 使用 decimal.Decimal 確保精確計算
-//
-// 業務規則：積分必須為非負整數
+// TODO (Uncle Bob Review): 違反 SRP - 業務邏輯應該在 PointsCalculationService (Domain Service)
+// 這個方法將在 Day 6 重構時移除
 func (r ConversionRate) CalculatePoints(amount decimal.Decimal) PointsAmount {
-	// 防止除以零（理論上不會發生，因為 ConversionRate >= 1）
-	if r.value == 0 {
-		return newPointsAmountUnchecked(0)
-	}
-
-	// 計算：amount / conversion_rate，然後向下取整
 	rate := decimal.NewFromInt(int64(r.value))
 	points := amount.Div(rate).Floor().IntPart()
 
-	// floor 結果可能為負數（如果 amount 為負）
-	// 我們確保返回的積分 >= 0
+	// 確保返回的積分 >= 0（處理負數金額）
 	if points < 0 {
 		return newPointsAmountUnchecked(0)
 	}
 
-	// 安全使用 unchecked 建構：已確保 points >= 0
 	return newPointsAmountUnchecked(int(points))
 }
 
 // AccountID 帳戶 ID 值對象（UUID 封裝）
-// 設計原則：值對象不可變、自我驗證
-//
-// 用途：唯一標識一個積分帳戶
+// TODO (Uncle Bob Review): AccountID 和 MemberID 有 80+ 行重複代碼
+// 建議在 Week 1 結束時使用 Go 泛型重構（EntityID[T]）
 type AccountID struct {
 	value uuid.UUID
 }
 
-// NewAccountID 生成新的帳戶 ID（使用 UUID v4）
 func NewAccountID() AccountID {
 	return AccountID{value: uuid.New()}
 }
 
-// AccountIDFromString 從字串解析帳戶 ID
-// 建構約束：必須是有效的 UUID 格式
 func AccountIDFromString(s string) (AccountID, error) {
 	id, err := uuid.Parse(s)
 	if err != nil {
-		return AccountID{}, fmt.Errorf(
-			"%w: attempted to parse AccountID from invalid UUID string '%s': %v",
-			ErrInvalidAccountID,
-			s,
-			err,
+		return AccountID{}, ErrInvalidAccountID.WithContext(
+			"input", s,
+			"parse_error", err.Error(),
 		)
 	}
 	return AccountID{value: id}, nil
 }
 
-// String 轉換為字串表示（小寫 UUID）
 func (a AccountID) String() string {
 	return a.value.String()
 }
 
-// Equals 比較兩個 AccountID 是否相等
 func (a AccountID) Equals(other AccountID) bool {
 	return a.value == other.value
 }
 
-// IsEmpty 判斷是否為空 ID（零值）
 func (a AccountID) IsEmpty() bool {
 	return a.value == uuid.Nil
 }
 
 // MemberID 會員 ID 值對象（UUID 封裝）
-// 設計原則：值對象不可變、自我驗證
-//
-// 用途：唯一標識一個會員
 type MemberID struct {
 	value uuid.UUID
 }
 
-// NewMemberID 生成新的會員 ID（使用 UUID v4）
 func NewMemberID() MemberID {
 	return MemberID{value: uuid.New()}
 }
 
-// MemberIDFromString 從字串解析會員 ID
-// 建構約束：必須是有效的 UUID 格式
 func MemberIDFromString(s string) (MemberID, error) {
 	id, err := uuid.Parse(s)
 	if err != nil {
-		return MemberID{}, fmt.Errorf(
-			"%w: attempted to parse MemberID from invalid UUID string '%s': %v",
-			ErrInvalidMemberID,
-			s,
-			err,
+		return MemberID{}, ErrInvalidMemberID.WithContext(
+			"input", s,
+			"parse_error", err.Error(),
 		)
 	}
 	return MemberID{value: id}, nil
 }
 
-// String 轉換為字串表示（小寫 UUID）
 func (m MemberID) String() string {
 	return m.value.String()
 }
 
-// Equals 比較兩個 MemberID 是否相等
 func (m MemberID) Equals(other MemberID) bool {
 	return m.value == other.value
 }
 
-// IsEmpty 判斷是否為空 ID（零值）
 func (m MemberID) IsEmpty() bool {
 	return m.value == uuid.Nil
 }

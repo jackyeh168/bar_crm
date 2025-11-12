@@ -35,8 +35,9 @@ func TestNewPointsAmount_NegativeValue_ReturnsError(t *testing.T) {
 	assert.Error(t, err)
 	assert.ErrorIs(t, err, points.ErrNegativePointsAmount)
 	assert.Equal(t, 0, amount.Value())
-	// 驗證錯誤訊息包含嘗試的值
-	assert.Contains(t, err.Error(), "value -10")
+	// 驗證錯誤訊息包含上下文信息
+	assert.Contains(t, err.Error(), "POINTS_NEGATIVE")
+	assert.Contains(t, err.Error(), "attempted_value")
 }
 
 // Test 3: 建構零值 PointsAmount
@@ -59,9 +60,10 @@ func TestPointsAmount_Add_ReturnsNewPointsAmount(t *testing.T) {
 	amount2, _ := points.NewPointsAmount(50)
 
 	// Act
-	result := amount1.Add(amount2)
+	result, err := amount1.Add(amount2)
 
 	// Assert
+	assert.NoError(t, err)
 	assert.Equal(t, 150, result.Value())
 	// 驗證不變性：原始值不變
 	assert.Equal(t, 100, amount1.Value())
@@ -84,7 +86,7 @@ func TestPointsAmount_Subtract_ReturnsNewPointsAmount(t *testing.T) {
 	assert.Equal(t, 100, amount1.Value())
 }
 
-// Test 6: PointsAmount 相減超過範圍失敗（業務規則違反：積分不足）
+// Test 6: PointsAmount 相減超過範圍失敗（建構約束違反：會產生負數）
 func TestPointsAmount_Subtract_ExceedsValue_ReturnsError(t *testing.T) {
 	// Arrange
 	amount1, _ := points.NewPointsAmount(50)
@@ -95,10 +97,12 @@ func TestPointsAmount_Subtract_ExceedsValue_ReturnsError(t *testing.T) {
 
 	// Assert
 	assert.Error(t, err)
-	assert.ErrorIs(t, err, points.ErrInsufficientPoints)
+	assert.ErrorIs(t, err, points.ErrNegativePointsAmount)
 	assert.Equal(t, 0, result.Value())
-	// 驗證錯誤訊息包含上下文
-	assert.Contains(t, err.Error(), "cannot subtract 100 from 50")
+	// 驗證錯誤訊息包含上下文信息
+	assert.Contains(t, err.Error(), "POINTS_NEGATIVE")
+	assert.Contains(t, err.Error(), "minuend")
+	assert.Contains(t, err.Error(), "subtrahend")
 }
 
 // Test 7: PointsAmount 比較相等
@@ -138,6 +142,35 @@ func TestPointsAmount_GreaterThan_ReturnsCorrectResult(t *testing.T) {
 	assert.True(t, amount1.GreaterThan(amount2))
 	assert.False(t, amount2.GreaterThan(amount1))
 	assert.False(t, amount1.GreaterThan(amount3)) // 相等不算大於
+}
+
+// Test 9a: PointsAmount IsZero
+func TestPointsAmount_IsZero(t *testing.T) {
+	// Arrange
+	zeroAmount, _ := points.NewPointsAmount(0)
+	nonZeroAmount, _ := points.NewPointsAmount(100)
+
+	// Act & Assert
+	assert.True(t, zeroAmount.IsZero())
+	assert.False(t, nonZeroAmount.IsZero())
+}
+
+// Test 9b: PointsAmount Add 溢出保護
+func TestPointsAmount_Add_Overflow_ReturnsError(t *testing.T) {
+	// Arrange - 使用實際的 maxInt（64位系統上會更大）
+	const maxInt = int(^uint(0) >> 1)
+	amount1, _ := points.NewPointsAmount(maxInt)
+	amount2, _ := points.NewPointsAmount(1)
+
+	// Act
+	result, err := amount1.Add(amount2)
+
+	// Assert
+	assert.Error(t, err)
+	assert.ErrorIs(t, err, points.ErrInvalidPointsAmount)
+	assert.Equal(t, 0, result.Value())
+	assert.Contains(t, err.Error(), "POINTS_INVALID")
+	assert.Contains(t, err.Error(), "overflow")
 }
 
 // ===== ConversionRate 測試 =====
