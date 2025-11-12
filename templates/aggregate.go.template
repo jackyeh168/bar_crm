@@ -1,0 +1,272 @@
+package {{.Package}}
+
+import (
+	"time"
+	"github.com/yourorg/bar_crm/internal/domain/shared"
+)
+
+// ===========================
+// {{.AggregateName}} 聚合根
+// ===========================
+
+// {{.AggregateName}} {{.Description}}
+// 設計原則：聚合根封裝業務規則、保護不變條件、發布領域事件
+//
+// 聚合邊界：
+// - TODO: 列出聚合包含的實體和值對象
+// - 示例：PointsAccount 包含 AccountID, MemberID, PointsAmount 等
+//
+// 不變條件（Invariants）：
+// - TODO: 列出聚合必須始終滿足的不變條件
+// - 示例：EarnedPoints >= UsedPoints
+// - 示例：UsedPoints >= 0
+type {{.AggregateName}} struct {
+	// ===== 標識符 =====
+	id {{.IDType}}  // 聚合根 ID（不可變）
+
+	// ===== 值對象 =====
+	// TODO: 添加值對象字段
+	// 示例：
+	// earnedPoints PointsAmount
+	// usedPoints   PointsAmount
+
+	// ===== 關聯 ID =====
+	// TODO: 添加關聯實體的 ID（不直接持有實體）
+	// 示例：
+	// memberID MemberID
+
+	// ===== 審計字段 =====
+	createdAt time.Time
+	updatedAt time.Time
+	version   int  // 樂觀鎖版本號
+
+	// ===== 領域事件 =====
+	events []shared.DomainEvent  // 未發布的領域事件
+}
+
+// ===========================
+// 建構函數
+// ===========================
+
+// New{{.AggregateName}} 創建新的聚合根實例
+// 用於創建全新的聚合（從零開始）
+//
+// 參數：
+//   - TODO: 列出創建聚合所需的參數
+//
+// 返回：
+//   - *{{.AggregateName}} - 新創建的聚合根
+//   - error - 如果驗證失敗
+func New{{.AggregateName}}(/* TODO: 添加參數 */) (*{{.AggregateName}}, error) {
+	// TODO: 驗證參數
+
+	now := time.Now()
+	aggregate := &{{.AggregateName}}{
+		id: {{.NewIDFunction}}(),
+		// TODO: 初始化其他字段
+		createdAt: now,
+		updatedAt: now,
+		version:   1,
+		events:    make([]shared.DomainEvent, 0),
+	}
+
+	// TODO: 發布聚合創建事件
+	// aggregate.addEvent(New{{.AggregateName}}CreatedEvent(...))
+
+	return aggregate, nil
+}
+
+// Reconstitute{{.AggregateName}} 重建聚合根實例
+// 用於從存儲層（數據庫）重建聚合
+//
+// 設計原則：
+// - 不執行業務驗證（數據已驗證過）
+// - 不發布領域事件（已發生過）
+// - 僅用於 Repository 層
+func Reconstitute{{.AggregateName}}(
+	id {{.IDType}},
+	// TODO: 添加重建所需的所有字段
+	createdAt time.Time,
+	updatedAt time.Time,
+	version int,
+) *{{.AggregateName}} {
+	return &{{.AggregateName}}{
+		id: id,
+		// TODO: 設置其他字段
+		createdAt: createdAt,
+		updatedAt: updatedAt,
+		version:   version,
+		events:    make([]shared.DomainEvent, 0),
+	}
+}
+
+// ===========================
+// Getter 方法
+// ===========================
+
+// ID 獲取聚合根 ID
+func (a *{{.AggregateName}}) ID() {{.IDType}} {
+	return a.id
+}
+
+// TODO: 添加其他 Getter 方法
+// 示例：
+// func (a *{{.AggregateName}}) MemberID() MemberID {
+//     return a.memberID
+// }
+
+// CreatedAt 獲取創建時間
+func (a *{{.AggregateName}}) CreatedAt() time.Time {
+	return a.createdAt
+}
+
+// UpdatedAt 獲取更新時間
+func (a *{{.AggregateName}}) UpdatedAt() time.Time {
+	return a.updatedAt
+}
+
+// Version 獲取版本號（用於樂觀鎖）
+func (a *{{.AggregateName}}) Version() int {
+	return a.version
+}
+
+// ===========================
+// 業務方法（Tell, Don't Ask）
+// ===========================
+
+// TODO: 實作業務方法
+// 設計原則：
+// 1. Tell, Don't Ask：不暴露內部狀態讓外部判斷，而是提供方法讓外部"告訴"聚合做什麼
+// 2. 業務規則封裝：所有業務邏輯在聚合內部
+// 3. 不變條件保護：每個方法執行後，不變條件必須滿足
+// 4. 領域事件發布：狀態變更時發布事件
+
+// 示例方法：
+
+// DoSomething 執行某個業務操作
+// func (a *{{.AggregateName}}) DoSomething(param SomeType) error {
+//     // 1. 驗證前置條件
+//     if err := a.validatePrecondition(); err != nil {
+//         return err
+//     }
+//
+//     // 2. 執行業務邏輯（修改狀態）
+//     // a.someField = newValue
+//
+//     // 3. 檢查不變條件
+//     if err := a.checkInvariants(); err != nil {
+//         panic(fmt.Sprintf("invariant violation: %v", err))
+//     }
+//
+//     // 4. 更新審計字段
+//     a.updatedAt = time.Now()
+//
+//     // 5. 發布領域事件
+//     a.addEvent(NewSomethingHappenedEvent(...))
+//
+//     return nil
+// }
+
+// ===========================
+// 不變條件檢查
+// ===========================
+
+// checkInvariants 檢查聚合的所有不變條件
+// 應在每個修改狀態的方法末尾調用
+// 如果不變條件被違反，panic（表示程序邏輯錯誤）
+func (a *{{.AggregateName}}) checkInvariants() error {
+	// TODO: 實作不變條件檢查
+	// 示例：
+	// if a.earnedPoints.LessThan(a.usedPoints) {
+	//     return fmt.Errorf("invariant violation: earned points (%d) < used points (%d)",
+	//         a.earnedPoints.Value(), a.usedPoints.Value())
+	// }
+
+	return nil
+}
+
+// ===========================
+// 領域事件管理
+// ===========================
+
+// addEvent 添加領域事件到未發布事件列表
+// 私有方法，只在聚合內部調用
+func (a *{{.AggregateName}}) addEvent(event shared.DomainEvent) {
+	a.events = append(a.events, event)
+}
+
+// PullEvents 拉取未發布的領域事件並清空列表
+// 由 Repository 或 Application Service 調用
+func (a *{{.AggregateName}}) PullEvents() []shared.DomainEvent {
+	events := a.events
+	a.events = make([]shared.DomainEvent, 0)
+	return events
+}
+
+// ClearEvents 清空未發布的領域事件
+// 通常在事件發布失敗後回滾時使用
+func (a *{{.AggregateName}}) ClearEvents() {
+	a.events = make([]shared.DomainEvent, 0)
+}
+
+// ===========================
+// 版本管理（樂觀鎖）
+// ===========================
+
+// IncrementVersion 增加版本號
+// 由 Repository 在保存前調用
+func (a *{{.AggregateName}}) IncrementVersion() {
+	a.version++
+	a.updatedAt = time.Now()
+}
+
+// ===========================
+// 設計原則檢查清單
+// ===========================
+
+// ✅ 聚合根職責
+// - [ ] 封裝業務規則
+// - [ ] 保護不變條件
+// - [ ] 發布領域事件
+// - [ ] Tell, Don't Ask
+
+// ✅ 聚合邊界
+// - [ ] 事務邊界 = 聚合邊界
+// - [ ] 只持有關聯實體的 ID，不直接持有實體
+// - [ ] 輕量級設計（避免無界集合）
+
+// ✅ 不變條件
+// - [ ] 所有不變條件在 checkInvariants() 中檢查
+// - [ ] 每個修改方法末尾調用 checkInvariants()
+// - [ ] 不變條件違反時 panic
+
+// ✅ 領域事件
+// - [ ] 狀態變更時發布事件
+// - [ ] 事件命名為過去式
+// - [ ] 事件包含完整信息
+
+// ===========================
+// 測試指南
+// ===========================
+
+// 必須測試的場景：
+// 1. 聚合創建
+//    - 有效參數創建成功
+//    - 無效參數返回錯誤
+//    - 創建時發布事件
+// 2. 業務方法
+//    - 正常流程
+//    - 業務規則驗證
+//    - 不變條件保護
+//    - 事件發布
+// 3. 不變條件
+//    - 不變條件始終滿足
+//    - 不變條件違反時 panic
+// 4. 領域事件
+//    - 事件內容正確
+//    - PullEvents 清空列表
+
+// 測試命名規範：
+// func Test{{.AggregateName}}_New{{.AggregateName}}_ValidInput_Success(t *testing.T)
+// func Test{{.AggregateName}}_DoSomething_ValidState_Success(t *testing.T)
+// func Test{{.AggregateName}}_DoSomething_InvariantViolation_Panics(t *testing.T)

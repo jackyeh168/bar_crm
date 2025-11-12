@@ -1,0 +1,195 @@
+package {{.Package}}
+
+import "fmt"
+
+// ===========================
+// {{.TypeName}} 值對象
+// ===========================
+
+// {{.TypeName}} {{.Description}}
+// 設計原則：值對象不可變、自我驗證
+//
+// 業務規則：
+// - TODO: 列出所有業務規則和約束條件
+// - 示例：積分數量必須 >= 0
+// - 示例：轉換率範圍 1-1000
+type {{.TypeName}} struct {
+	value {{.FieldType}}  // unexported field 確保不可變性
+}
+
+// ===========================
+// 建構函數
+// ===========================
+
+// New{{.TypeName}} 建構函數（checked 版本）
+// 對外部輸入進行完整驗證
+//
+// 建構約束：
+// - TODO: 列出所有建構約束
+// - 示例：value 必須 >= 0
+//
+// 參數：
+//   value - TODO: 參數說明
+//
+// 返回：
+//   {{.TypeName}} - 新創建的值對象
+//   error - 如果驗證失敗，返回領域錯誤
+func New{{.TypeName}}(value {{.FieldType}}) ({{.TypeName}}, error) {
+	// TODO: 實作驗證邏輯
+	// 示例：
+	// if value < 0 {
+	//     return {{.TypeName}}{}, ErrNegative{{.TypeName}}.WithContext(
+	//         "attempted_value", value,
+	//         "constraint", ">= 0",
+	//     )
+	// }
+
+	return {{.TypeName}}{value: value}, nil
+}
+
+// new{{.TypeName}}Unchecked 內部建構函數（unchecked 版本）
+// 僅供內部使用，當我們確定值有效時使用（性能優化）
+//
+// 設計理由：
+// 1. 性能優化：在內部操作中跳過重複驗證（如 Add、Subtract 的結果）
+// 2. 不變性保證：如果兩個有效的 {{.TypeName}} 相加，結果必然有效（假設無溢位）
+// 3. 封裝性：小寫開頭確保外部無法繞過驗證
+//
+// 前提條件：調用者必須保證 value 符合所有約束條件
+func new{{.TypeName}}Unchecked(value {{.FieldType}}) {{.TypeName}} {
+	return {{.TypeName}}{value: value}
+}
+
+// ===========================
+// Getter 方法
+// ===========================
+
+// Value 獲取值對象的值
+// 注意：返回的是副本，不影響不可變性
+func (v {{.TypeName}}) Value() {{.FieldType}} {
+	return v.value
+}
+
+// ===========================
+// 比較方法
+// ===========================
+
+// Equals 比較兩個 {{.TypeName}} 是否相等
+func (v {{.TypeName}}) Equals(other {{.TypeName}}) bool {
+	return v.value == other.value
+}
+
+// TODO: 根據業務需求添加其他比較方法
+// 示例：對於數值類型的值對象
+
+// GreaterThan 判斷是否大於另一個 {{.TypeName}}
+// func (v {{.TypeName}}) GreaterThan(other {{.TypeName}}) bool {
+//     return v.value > other.value
+// }
+
+// LessThan 判斷是否小於另一個 {{.TypeName}}
+// func (v {{.TypeName}}) LessThan(other {{.TypeName}}) bool {
+//     return v.value < other.value
+// }
+
+// GreaterThanOrEqual 判斷是否大於等於另一個 {{.TypeName}}
+// func (v {{.TypeName}}) GreaterThanOrEqual(other {{.TypeName}}) bool {
+//     return v.value >= other.value
+// }
+
+// ===========================
+// 業務方法
+// ===========================
+
+// TODO: 根據業務需求添加值對象的業務方法
+// 注意：所有方法必須保持不可變性（返回新實例）
+
+// 示例：對於數值類型的值對象
+
+// Add 相加（返回新的 {{.TypeName}}，保持不可變性）
+//
+// 設計假設：
+// - TODO: 列出所有假設條件
+// - 示例：在生產系統中，積分受業務規則限制（例如：單帳戶最多 1,000,000 點）
+// - 示例：因此整數溢位在實際業務場景中不會發生
+//
+// 如果需要處理任意大的值，應使用 big.Int 或在聚合根層面強制上限
+// func (v {{.TypeName}}) Add(other {{.TypeName}}) {{.TypeName}} {
+//     return new{{.TypeName}}Unchecked(v.value + other.value)
+// }
+
+// Subtract 相減（返回新的 {{.TypeName}}）
+//
+// 建構約束：結果必須符合值對象的約束條件
+// 示例：對於積分數量，結果必須 >= 0
+// func (v {{.TypeName}}) Subtract(other {{.TypeName}}) ({{.TypeName}}, error) {
+//     // 檢查建構約束：結果是否會違反約束
+//     if v.value < other.value {
+//         // 這是建構約束違反：無法創建不符合約束的值對象
+//         return {{.TypeName}}{}, ErrNegative{{.TypeName}}.WithContext(
+//             "minuend", v.value,
+//             "subtrahend", other.value,
+//             "result", v.value - other.value,
+//         )
+//     }
+//
+//     // 已經保證 result 符合約束，可以安全使用 unchecked 建構
+//     return new{{.TypeName}}Unchecked(v.value - other.value), nil
+// }
+
+// ===========================
+// 輔助方法
+// ===========================
+
+// IsZero 判斷是否為零值
+// 用於避免 value.Value() == 0 的寫法（違反 Tell, Don't Ask）
+// func (v {{.TypeName}}) IsZero() bool {
+//     return v.value == 0
+// }
+
+// String 字符串表示（可選，用於調試和日誌）
+// func (v {{.TypeName}}) String() string {
+//     return fmt.Sprintf("{{.TypeName}}(%v)", v.value)
+// }
+
+// ===========================
+// 設計原則檢查清單
+// ===========================
+
+// ✅ 不可變性
+// - [ ] 所有字段都是 unexported
+// - [ ] 沒有 Setter 方法
+// - [ ] 修改操作返回新實例
+
+// ✅ 自我驗證
+// - [ ] Checked 建構函數驗證所有約束
+// - [ ] 使用 DomainError 而非 fmt.Errorf
+
+// ✅ 職責清晰
+// - [ ] 值對象只處理建構約束
+// - [ ] 業務規則在聚合根或領域服務
+// - [ ] 不依賴外部框架
+
+// ===========================
+// 測試指南
+// ===========================
+
+// 必須測試的場景：
+// 1. 建構函數驗證
+//    - 有效值測試
+//    - 無效值測試（邊界條件）
+//    - 錯誤類型檢查（errors.Is）
+// 2. 比較方法
+//    - Equals（相等、不相等）
+//    - 其他比較方法
+// 3. 業務方法
+//    - 正常流程
+//    - 邊界條件
+//    - 不可變性驗證
+// 4. 輔助方法
+//    - IsZero 等方法
+
+// 測試命名規範：
+// func Test{{.TypeName}}_New{{.TypeName}}_ValidValue_Success(t *testing.T)
+// func Test{{.TypeName}}_New{{.TypeName}}_InvalidValue_ReturnsError(t *testing.T)
+// func Test{{.TypeName}}_Add_ReturnsNewInstance(t *testing.T)

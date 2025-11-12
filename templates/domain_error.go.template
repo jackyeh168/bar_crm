@@ -1,0 +1,141 @@
+package {{.Package}}
+
+import "fmt"
+
+// ===========================
+// 錯誤代碼定義
+// ===========================
+
+// ErrorCode 錯誤代碼類型
+type ErrorCode string
+
+// 錯誤代碼常量
+// 命名規範：ErrCode{ErrorName}
+const (
+	// TODO: 定義具體的錯誤代碼
+	// 示例：
+	// ErrCodeNegativePointsAmount ErrorCode = "POINTS_NEGATIVE"
+	// ErrCodeInsufficientPoints   ErrorCode = "POINTS_INSUFFICIENT"
+	// ErrCodeInvalidAccountID     ErrorCode = "ACCOUNT_INVALID_ID"
+)
+
+// ===========================
+// DomainError 結構
+// ===========================
+
+// DomainError 領域錯誤
+// 設計原則：
+// 1. 包含結構化的錯誤代碼（用於 HTTP 狀態碼映射）
+// 2. 支持上下文信息（用於調試和日誌）
+// 3. 不可變性（創建後不可修改）
+type DomainError struct {
+	Code    ErrorCode
+	Message string
+	Context map[string]interface{}
+}
+
+// Error 實現 error 接口
+func (e *DomainError) Error() string {
+	if len(e.Context) == 0 {
+		return fmt.Sprintf("[%s] %s", e.Code, e.Message)
+	}
+	return fmt.Sprintf("[%s] %s (context: %+v)", e.Code, e.Message, e.Context)
+}
+
+// WithContext 添加上下文信息（返回新的錯誤實例，保持不可變性）
+// 使用方式：
+//   return ErrNegativePointsAmount.WithContext("attempted_value", value)
+func (e *DomainError) WithContext(keyValues ...interface{}) error {
+	if len(keyValues)%2 != 0 {
+		panic("WithContext requires even number of arguments (key-value pairs)")
+	}
+
+	ctx := make(map[string]interface{}, len(e.Context)+len(keyValues)/2)
+
+	// 複製現有上下文
+	for k, v := range e.Context {
+		ctx[k] = v
+	}
+
+	// 添加新上下文
+	for i := 0; i < len(keyValues); i += 2 {
+		key, ok := keyValues[i].(string)
+		if !ok {
+			panic(fmt.Sprintf("context key must be string, got %T", keyValues[i]))
+		}
+		ctx[key] = keyValues[i+1]
+	}
+
+	return &DomainError{
+		Code:    e.Code,
+		Message: e.Message,
+		Context: ctx,
+	}
+}
+
+// Is 實現 errors.Is 接口（用於錯誤類型判斷）
+func (e *DomainError) Is(target error) bool {
+	t, ok := target.(*DomainError)
+	if !ok {
+		return false
+	}
+	return e.Code == t.Code
+}
+
+// ===========================
+// 預定義錯誤
+// ===========================
+
+// TODO: 定義具體的領域錯誤
+// 命名規範：Err{ErrorName}
+//
+// 示例：
+// var ErrNegativePointsAmount = &DomainError{
+//     Code:    ErrCodeNegativePointsAmount,
+//     Message: "積分數量不能為負數",
+// }
+//
+// var ErrInsufficientPoints = &DomainError{
+//     Code:    ErrCodeInsufficientPoints,
+//     Message: "積分餘額不足",
+// }
+//
+// var ErrInvalidAccountID = &DomainError{
+//     Code:    ErrCodeInvalidAccountID,
+//     Message: "無效的帳戶 ID",
+// }
+
+// ===========================
+// 使用範例
+// ===========================
+
+// 在值對象或聚合根中使用：
+//
+// func NewPointsAmount(value int) (PointsAmount, error) {
+//     if value < 0 {
+//         return PointsAmount{}, ErrNegativePointsAmount.WithContext(
+//             "attempted_value", value,
+//             "constraint", ">= 0",
+//         )
+//     }
+//     return PointsAmount{value: value}, nil
+// }
+
+// 在 HTTP 層映射錯誤到狀態碼：
+//
+// func MapErrorToHTTPStatus(err error) int {
+//     var domainErr *DomainError
+//     if errors.As(err, &domainErr) {
+//         switch domainErr.Code {
+//         case ErrCodeNegativePointsAmount:
+//             return http.StatusBadRequest
+//         case ErrCodeInsufficientPoints:
+//             return http.StatusUnprocessableEntity
+//         case ErrCodeInvalidAccountID:
+//             return http.StatusBadRequest
+//         default:
+//             return http.StatusInternalServerError
+//         }
+//     }
+//     return http.StatusInternalServerError
+// }

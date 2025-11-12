@@ -2,6 +2,133 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## ⚠️ 開始實作前必讀
+
+**CRITICAL**: 在開始任何代碼實作前，請先閱讀：
+- **實作檢查清單**: `docs/implementation-checklist.md` - 必須在每個任務開始前確認
+- **架構約束速查**: 見下方"核心架構約束"章節
+
+---
+
+## 🏗️ 核心架構約束（Implementation Constraints）
+
+### ❌ 絕對禁止事項
+
+| 層次 | 禁止行為 | 正確做法 | 文檔參考 |
+|------|---------|---------|----------|
+| **Domain Layer** | 使用 `fmt.Errorf()` 或 `errors.New()` | 必須使用 `DomainError` 結構 | `13-error-handling-strategy.md` |
+| **Domain Layer** | Import 外部框架 (`gorm`, `gin`, `redis`) | 只依賴標準庫和 domain 接口 | `12-dependency-rules.md` |
+| **Value Object** | 提供 Setter 方法或 exported fields | 必須不可變（unexported fields） | `10-value-object-validation.md` |
+| **所有層次** | 跳過測試或低於目標覆蓋率 | 遵循 TDD，覆蓋率 >= 85% | `qa/testing-conventions.md` |
+
+### ✅ 必須遵守規則
+
+#### 1. 錯誤處理架構
+
+**錯誤的做法**：
+```go
+// ❌ 禁止：使用 fmt.Errorf
+var ErrNegativePointsAmount = fmt.Errorf("points amount cannot be negative")
+```
+
+**正確的做法**：
+```go
+// ✅ 必須：使用 DomainError 結構
+const ErrCodeNegativePointsAmount ErrorCode = "POINTS_NEGATIVE"
+
+var ErrNegativePointsAmount = &DomainError{
+    Code:    ErrCodeNegativePointsAmount,
+    Message: "積分數量不能為負數",
+}
+```
+
+**參考**：`docs/architecture/ddd/13-error-handling-strategy.md`
+
+---
+
+#### 2. 值對象設計
+
+**必須特性**：
+- ✅ 不可變性（unexported fields，無 setters）
+- ✅ 自我驗證（建構函數檢查約束）
+- ✅ Checked vs Unchecked 建構函數模式
+
+**示例**：
+```go
+type PointsAmount struct {
+    value int  // ✅ unexported
+}
+
+func NewPointsAmount(value int) (PointsAmount, error) {
+    if value < 0 {
+        return PointsAmount{}, ErrNegativePointsAmount  // ✅ 使用 DomainError
+    }
+    return PointsAmount{value: value}, nil
+}
+```
+
+**參考**：`docs/architecture/ddd/10-value-object-validation.md`
+
+---
+
+#### 3. 依賴規則
+
+**依賴方向** (只能向內依賴)：
+```
+Presentation → Application → Domain
+Infrastructure → Domain (實現接口)
+```
+
+**Domain Layer 禁止依賴**：
+- ❌ Application Layer
+- ❌ Infrastructure Layer
+- ❌ Presentation Layer
+- ❌ 外部框架 (GORM, Gin, Redis, LINE SDK)
+
+**參考**：`docs/architecture/ddd/12-dependency-rules.md`
+
+---
+
+#### 4. 測試規範
+
+**AAA 模式**（強制）：
+```go
+func TestPointsAmount_Subtract_ExceedsValue_ReturnsError(t *testing.T) {
+    // Arrange - 準備測試數據
+    amount1, _ := points.NewPointsAmount(50)
+    amount2, _ := points.NewPointsAmount(100)
+
+    // Act - 執行被測試的操作
+    result, err := amount1.Subtract(amount2)
+
+    // Assert - 驗證結果
+    assert.Error(t, err)
+    assert.ErrorIs(t, err, points.ErrNegativePointsAmount)
+}
+```
+
+**覆蓋率要求**：
+- Unit Tests: >= 85%
+- Integration Tests: 20%
+- E2E Tests: 3%
+
+**參考**：`docs/qa/testing-conventions.md`
+
+---
+
+### 📚 實作前必讀文檔矩陣
+
+| 實作內容 | 必讀文檔 |
+|---------|---------|
+| **值對象** | `10-value-object-validation.md`, `13-error-handling-strategy.md` |
+| **聚合根** | `05-tactical-design.md`, `08-aggregate-design-patterns.md` |
+| **領域服務** | `05-tactical-design.md`, `09-domain-services.md` |
+| **Repository** | `06-repository-pattern.md`, `12-dependency-rules.md` |
+| **Use Case** | `10-use-case-definitions.md` |
+| **錯誤處理** | `13-error-handling-strategy.md` (所有實作必讀) |
+
+---
+
 ## Project Status
 
 **IMPORTANT**: This is currently a **documentation-only project** in the planning phase. No source code has been implemented yet. All content resides in the `/docs` directory with comprehensive architectural specifications.

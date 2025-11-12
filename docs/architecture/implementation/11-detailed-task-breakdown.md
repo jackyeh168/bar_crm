@@ -37,6 +37,71 @@
 
 ---
 
+#### ⚠️ 實作前置要求
+
+**開始任何代碼實作前，請先完成以下檢查**：
+
+- [ ] 已閱讀 `docs/implementation-checklist.md`（Domain Layer 部分）
+- [ ] 已閱讀 `CLAUDE.md` 核心架構約束章節
+- [ ] 已查看 `templates/value_object.go.template`（值對象實作參考）
+- [ ] 已查看 `templates/domain_error.go.template`（錯誤定義參考）
+
+---
+
+#### 📚 必讀文檔
+
+| 文檔 | 章節 | 為什麼要讀 |
+|------|------|-----------|
+| `docs/implementation-checklist.md` | Domain Layer 檢查清單 | 避免常見錯誤（如使用 fmt.Errorf） |
+| `docs/architecture/ddd/10-value-object-validation.md` | 全文 | 理解值對象的建構約束 vs 業務規則 |
+| `docs/architecture/ddd/13-error-handling-strategy.md` | 全文 | 理解 DomainError 結構和錯誤語義 |
+| `CLAUDE.md` | 核心架構約束 | 快速查看禁止事項和正確做法 |
+
+---
+
+#### ⚠️ 架構約束（本日重點）
+
+**Day 1 的關鍵約束**：
+
+1. **錯誤處理**
+   ```go
+   // ❌ 絕對禁止
+   var ErrNegativePointsAmount = errors.New("points amount cannot be negative")
+   var ErrNegativePointsAmount = fmt.Errorf("points amount cannot be negative")
+
+   // ✅ 必須使用
+   var ErrNegativePointsAmount = &DomainError{
+       Code:    ErrCodeNegativePointsAmount,
+       Message: "積分數量不能為負數",
+   }
+   ```
+
+2. **值對象不可變性**
+   - 所有字段必須是 unexported（小寫開頭）
+   - 不提供 Setter 方法
+   - 修改操作返回新實例
+
+3. **建構約束 vs 業務規則**
+   - `NewPointsAmount(value)`: 檢查 value >= 0（建構約束）
+   - `Subtract(other)`: 返回 `ErrNegativePointsAmount` 如果結果 < 0（建構約束）
+   - 業務規則（如「帳戶餘額不足」）屬於聚合根，不是值對象
+
+4. **依賴限制**
+   - Domain Layer 只能 import 標準庫和 `internal/domain/shared`
+   - ❌ 禁止 import: `gorm`, `gin`, `redis`, `database/sql`
+
+---
+
+#### 💻 代碼模板引用
+
+| 任務 | 推薦模板 | 用途 |
+|------|---------|------|
+| 錯誤定義 | `templates/domain_error.go.template` | 正確定義 DomainError 結構 |
+| PointsAmount | `templates/value_object.go.template` | 值對象實作完整範例 |
+| 測試 | `templates/value_object.go.template` (底部) | 測試命名規範和場景 |
+
+---
+
 #### 任務 1.1: 專案初始化 (1h)
 
 **步驟**:
@@ -258,26 +323,146 @@ EOF
 cat > internal/domain/points/errors.go << 'EOF'
 package points
 
-import "errors"
+import "fmt"
+
+// ===========================
+// 錯誤代碼定義
+// ===========================
+
+// ErrorCode 錯誤代碼類型
+type ErrorCode string
+
+// 錯誤代碼常量
+const (
+	// 積分數量相關
+	ErrCodeNegativePointsAmount     ErrorCode = "POINTS_NEGATIVE"
+	ErrCodeInsufficientPoints       ErrorCode = "POINTS_INSUFFICIENT"
+	ErrCodeInsufficientEarnedPoints ErrorCode = "POINTS_EARNED_INSUFFICIENT"
+
+	// 轉換率相關
+	ErrCodeInvalidConversionRate ErrorCode = "CONVERSION_RATE_INVALID"
+	ErrCodeInvalidDateRange      ErrorCode = "DATE_RANGE_INVALID"
+
+	// 帳戶相關
+	ErrCodeAccountNotFound      ErrorCode = "ACCOUNT_NOT_FOUND"
+	ErrCodeAccountAlreadyExists ErrorCode = "ACCOUNT_ALREADY_EXISTS"
+	ErrCodeInvalidMemberID      ErrorCode = "MEMBER_ID_INVALID"
+)
+
+// ===========================
+// DomainError 結構
+// ===========================
+
+// DomainError 領域錯誤
+// 設計原則：
+// 1. 包含結構化的錯誤代碼（用於 HTTP 狀態碼映射）
+// 2. 支持上下文信息（用於調試和日誌）
+// 3. 不可變性（創建後不可修改）
+type DomainError struct {
+	Code    ErrorCode
+	Message string
+	Context map[string]interface{}
+}
+
+// Error 實現 error 接口
+func (e *DomainError) Error() string {
+	if len(e.Context) == 0 {
+		return fmt.Sprintf("[%s] %s", e.Code, e.Message)
+	}
+	return fmt.Sprintf("[%s] %s (context: %+v)", e.Code, e.Message, e.Context)
+}
+
+// WithContext 添加上下文信息（返回新的錯誤實例，保持不可變性）
+// 使用方式：
+//   return ErrNegativePointsAmount.WithContext("attempted_value", value)
+func (e *DomainError) WithContext(keyValues ...interface{}) error {
+	if len(keyValues)%2 != 0 {
+		panic("WithContext requires even number of arguments (key-value pairs)")
+	}
+
+	ctx := make(map[string]interface{}, len(e.Context)+len(keyValues)/2)
+
+	// 複製現有上下文
+	for k, v := range e.Context {
+		ctx[k] = v
+	}
+
+	// 添加新上下文
+	for i := 0; i < len(keyValues); i += 2 {
+		key, ok := keyValues[i].(string)
+		if !ok {
+			panic(fmt.Sprintf("context key must be string, got %T", keyValues[i]))
+		}
+		ctx[key] = keyValues[i+1]
+	}
+
+	return &DomainError{
+		Code:    e.Code,
+		Message: e.Message,
+		Context: ctx,
+	}
+}
+
+// Is 實現 errors.Is 接口（用於錯誤類型判斷）
+func (e *DomainError) Is(target error) bool {
+	t, ok := target.(*DomainError)
+	if !ok {
+		return false
+	}
+	return e.Code == t.Code
+}
+
+// ===========================
+// 預定義錯誤
+// ===========================
 
 // 積分數量相關錯誤
 var (
-	ErrNegativePointsAmount     = errors.New("points amount cannot be negative")
-	ErrInsufficientPoints       = errors.New("insufficient points for this operation")
-	ErrInsufficientEarnedPoints = errors.New("earned points cannot be less than used points")
+	ErrNegativePointsAmount = &DomainError{
+		Code:    ErrCodeNegativePointsAmount,
+		Message: "積分數量不能為負數",
+	}
+
+	ErrInsufficientPoints = &DomainError{
+		Code:    ErrCodeInsufficientPoints,
+		Message: "積分餘額不足",
+	}
+
+	ErrInsufficientEarnedPoints = &DomainError{
+		Code:    ErrCodeInsufficientEarnedPoints,
+		Message: "獲得積分不能少於已使用積分",
+	}
 )
 
 // 轉換率相關錯誤
 var (
-	ErrInvalidConversionRate = errors.New("conversion rate must be between 1 and 1000")
-	ErrInvalidDateRange      = errors.New("invalid date range: start date must be before or equal to end date")
+	ErrInvalidConversionRate = &DomainError{
+		Code:    ErrCodeInvalidConversionRate,
+		Message: "轉換率必須在 1-1000 之間",
+	}
+
+	ErrInvalidDateRange = &DomainError{
+		Code:    ErrCodeInvalidDateRange,
+		Message: "無效的日期範圍：開始日期必須早於或等於結束日期",
+	}
 )
 
 // 帳戶相關錯誤
 var (
-	ErrAccountNotFound      = errors.New("points account not found")
-	ErrAccountAlreadyExists = errors.New("points account already exists for this member")
-	ErrInvalidMemberID      = errors.New("invalid member ID")
+	ErrAccountNotFound = &DomainError{
+		Code:    ErrCodeAccountNotFound,
+		Message: "積分帳戶不存在",
+	}
+
+	ErrAccountAlreadyExists = &DomainError{
+		Code:    ErrCodeAccountAlreadyExists,
+		Message: "該會員已有積分帳戶",
+	}
+
+	ErrInvalidMemberID = &DomainError{
+		Code:    ErrCodeInvalidMemberID,
+		Message: "無效的會員 ID",
+	}
 )
 EOF
 ```
@@ -656,6 +841,74 @@ go tool cover -func=coverage.out
 
 * 上午 (4h): ConversionRate 值對象 TDD
 * 下午 (4h): AccountID + MemberID 值對象 TDD
+
+---
+
+#### ⚠️ 實作前置要求
+
+**開始任何代碼實作前，請先完成以下檢查**：
+
+- [ ] 已閱讀 `docs/implementation-checklist.md`（Domain Layer 部分）
+- [ ] 已查看 `templates/value_object.go.template`（值對象實作參考）
+- [ ] 已完成 Day 1 的錯誤定義（DomainError 結構）
+
+---
+
+#### 📚 必讀文檔
+
+| 文檔 | 章節 | 為什麼要讀 |
+|------|------|-----------|
+| `docs/implementation-checklist.md` | 值對象設計檢查 | 確保不可變性和自我驗證 |
+| `docs/architecture/ddd/10-value-object-validation.md` | 建構約束檢查 | 理解 ConversionRate 的有效範圍 1-1000 |
+| `templates/value_object.go.template` | Checked/Unchecked 建構函數 | 理解何時使用哪種建構方式 |
+
+---
+
+#### ⚠️ 架構約束（本日重點）
+
+**Day 2 的關鍵約束**：
+
+1. **ConversionRate 業務邏輯位置**
+   ```go
+   // ⚠️ 注意：CalculatePoints 方法目前實作在值對象中
+   // 這違反 SRP，但作為 Day 2 的過渡實作可以接受
+   // 📝 TODO：Week 1 結束時會重構到 PointsCalculationService (Domain Service)
+
+   // 暫時實作（Day 2）
+   func (r ConversionRate) CalculatePoints(amount decimal.Decimal) PointsAmount {
+       // ... 計算邏輯
+   }
+
+   // 最終實作（Week 1 重構時）
+   // type PointsCalculationService struct {}
+   // func (s *PointsCalculationService) CalculatePoints(amount Money, rate ConversionRate) PointsAmount
+   ```
+
+2. **UUID 值對象（AccountID, MemberID）**
+   - 使用 `google/uuid` 包
+   - 建構函數驗證 UUID 格式
+   - 提供 `NewAccountID()` 生成新 UUID
+   - 提供 `AccountIDFromString(s string)` 解析現有 UUID
+
+3. **代碼重複問題**
+   - AccountID 和 MemberID 代碼幾乎相同（60+ 行重複）
+   - ⚠️ 暫時接受重複（Day 2 快速實作）
+   - 📝 TODO：Week 1 結束時使用 Go 泛型重構
+
+4. **測試完整性**
+   - ConversionRate: 8+ 測試（建構、計算、邊界）
+   - AccountID: 4+ 測試（建構、解析、相等性、零值）
+   - MemberID: 4+ 測試（與 AccountID 相同模式）
+
+---
+
+#### 💻 代碼模板引用
+
+| 任務 | 推薦模板 | 用途 |
+|------|---------|------|
+| ConversionRate | `templates/value_object.go.template` | 數值類型值對象 |
+| AccountID/MemberID | `templates/value_object.go.template` | UUID 類型值對象 |
+| 測試 | `templates/value_object.go.template` (底部) | 測試場景參考 |
 
 ---
 
@@ -1205,6 +1458,91 @@ go tool cover -func=coverage.out
 
 ---
 
+#### ⚠️ 實作前置要求
+
+**開始任何代碼實作前，請先完成以下檢查**：
+
+- [ ] 已閱讀 `docs/implementation-checklist.md`（Domain Layer 部分）
+- [ ] 已查看 `templates/value_object.go.template`（值對象實作參考）
+- [ ] 已完成 Day 1-2 的值對象實作（有實作經驗後再進行）
+
+---
+
+#### 📚 必讀文檔
+
+| 文檔 | 章節 | 為什麼要讀 |
+|------|------|-----------|
+| `docs/implementation-checklist.md` | 值對象設計檢查 | 確保 DateRange 的不可變性 |
+| `docs/architecture/ddd/10-value-object-validation.md` | 時間相關驗證 | 理解日期範圍的建構約束 |
+| `templates/value_object.go.template` | 比較方法設計 | Contains、Overlaps 方法參考 |
+
+---
+
+#### ⚠️ 架構約束（本日重點）
+
+**Day 3 的關鍵約束**：
+
+1. **DateRange 建構約束**
+   ```go
+   // ✅ 建構約束：start 必須 <= end
+   func NewDateRange(start, end time.Time) (DateRange, error) {
+       if start.After(end) {
+           return DateRange{}, ErrInvalidDateRange.WithContext(
+               "start", start,
+               "end", end,
+           )
+       }
+       return DateRange{start: start, end: end}, nil
+   }
+   ```
+
+2. **時間值的不可變性**
+   - `time.Time` 本身是值類型（不可變）
+   - Getter 方法返回 `time.Time` 副本，安全
+   - 業務方法（Contains, Overlaps）不修改內部狀態
+
+3. **PointsSource 枚舉設計**
+   ```go
+   // ✅ 使用 iota 定義枚舉
+   type PointsSource int
+
+   const (
+       PointsSourceInvoice PointsSource = iota + 1  // 從 1 開始（0 作為零值）
+       PointsSourceSurvey
+       PointsSourceManual
+       PointsSourcePromotion
+   )
+
+   // ✅ 提供 String() 方法（用於日誌和調試）
+   func (s PointsSource) String() string {
+       switch s {
+       case PointsSourceInvoice: return "Invoice"
+       // ...
+       }
+   }
+
+   // ✅ 提供 IsValid() 方法（建構約束）
+   func (s PointsSource) IsValid() bool {
+       return s >= PointsSourceInvoice && s <= PointsSourcePromotion
+   }
+   ```
+
+4. **測試場景**
+   - DateRange: 有效範圍、無效範圍（start > end）、相等日期、Contains、Overlaps
+   - PointsSource: 枚舉值有效性、String() 輸出、零值處理
+
+---
+
+#### 💻 代碼模板引用
+
+| 任務 | 推薦模板 | 用途 |
+|------|---------|------|
+| DateRange | `templates/value_object.go.template` | 複合值對象（包含多個字段） |
+| PointsSource | 無專用模板 | 參考 Go 枚舉最佳實踐 |
+| 測試 | `templates/value_object.go.template` (底部) | 測試命名規範 |
+
+---
+
 #### 任務 3.1: DateRange 值對象 (3h)
 
 **目標**: 實作日期範圍值對象，用於轉換規則
@@ -1735,6 +2073,129 @@ go tool cover -func=coverage.out
 
 * 上午 (4h): PointsAccount 結構 + 建構函數
 * 下午 (4h): EarnPoints 命令方法
+
+---
+
+#### ⚠️ 實作前置要求
+
+**開始任何代碼實作前，請先完成以下檢查**：
+
+- [ ] 已閱讀 `docs/implementation-checklist.md`（Domain Layer 聚合根部分）
+- [ ] 已查看 `templates/aggregate.go.template`（聚合根實作參考）
+- [ ] 已完成 Day 1-3 的所有值對象（聚合根依賴值對象）
+- [ ] **關鍵**：已理解「業務規則」vs「建構約束」的區別
+
+---
+
+#### 📚 必讀文檔
+
+| 文檔 | 章節 | 為什麼要讀 |
+|------|------|-----------|
+| `docs/implementation-checklist.md` | 聚合根設計檢查 | 理解不變條件、事件發布 |
+| `docs/architecture/ddd/05-tactical-design.md` | 聚合根模式 | 理解聚合邊界和事務邊界 |
+| `docs/architecture/ddd/10-value-object-validation.md` | 錯誤語義 | 區分建構約束 vs 業務規則 |
+| `templates/aggregate.go.template` | 全文 | 聚合根完整實作範例 |
+
+---
+
+#### ⚠️ 架構約束（本日重點）
+
+**Day 4 的關鍵約束（聚合根設計原則）**：
+
+1. **不變條件（Invariants）**
+   ```go
+   // PointsAccount 的核心不變條件
+   // 1. EarnedPoints >= 0
+   // 2. UsedPoints >= 0
+   // 3. UsedPoints <= EarnedPoints（使用積分不能超過獲得積分）
+
+   // ✅ 每個修改方法末尾必須調用
+   func (a *PointsAccount) checkInvariants() error {
+       if a.earnedPoints.LessThan(a.usedPoints) {
+           return fmt.Errorf("invariant violation: earned (%d) < used (%d)",
+               a.earnedPoints.Value(), a.usedPoints.Value())
+       }
+       return nil
+   }
+
+   // ⚠️ 不變條件違反應該 panic（程序邏輯錯誤）
+   if err := a.checkInvariants(); err != nil {
+       panic(err)  // 不是業務錯誤，是代碼錯誤
+   }
+   ```
+
+2. **業務規則錯誤 vs 建構約束錯誤**
+   ```go
+   // ✅ 業務規則違反（EarnPoints, UsePoints 方法中）
+   func (a *PointsAccount) UsePoints(amount PointsAmount) error {
+       available := a.GetAvailablePoints()
+       if available.LessThan(amount) {
+           // 這是業務規則違反：帳戶餘額不足
+           return ErrInsufficientPoints.WithContext(
+               "available", available.Value(),
+               "requested", amount.Value(),
+           )
+       }
+       // ...
+   }
+
+   // ❌ 錯誤：不要在聚合根中返回 ErrNegativePointsAmount
+   // ErrNegativePointsAmount 是值對象的建構約束，不是聚合根的業務規則
+   ```
+
+3. **Tell, Don't Ask 原則**
+   ```go
+   // ❌ 錯誤：暴露內部狀態讓外部判斷
+   account := repo.FindByID(ctx, id)
+   if account.EarnedPoints().GreaterThan(threshold) {  // Ask
+       account.GrantBonus()  // Tell
+   }
+
+   // ✅ 正確：封裝業務邏輯在聚合內部
+   account := repo.FindByID(ctx, id)
+   account.GrantBonusIfEligible(threshold)  // Tell, Don't Ask
+   ```
+
+4. **領域事件發布**
+   ```go
+   // ✅ 狀態變更時發布事件
+   func (a *PointsAccount) EarnPoints(amount PointsAmount, source PointsSource) error {
+       // 1. 執行業務邏輯
+       a.earnedPoints = a.earnedPoints.Add(amount)
+
+       // 2. 檢查不變條件
+       if err := a.checkInvariants(); err != nil {
+           panic(err)
+       }
+
+       // 3. 更新審計字段
+       a.updatedAt = time.Now()
+
+       // 4. 發布領域事件
+       a.addEvent(NewPointsEarnedEvent(
+           a.id, a.memberID, amount, source,
+       ))
+
+       return nil
+   }
+   ```
+
+5. **聚合邊界 = 事務邊界**
+   - PointsAccount 聚合包含：AccountID, MemberID, PointsAmount, 交易記錄
+   - ❌ 不直接持有 Member 實體（只持有 MemberID）
+   - ❌ 不直接持有 ConversionRule 實體（通過 Domain Service 獲取）
+   - ✅ 一次事務只修改一個 PointsAccount
+
+---
+
+#### 💻 代碼模板引用
+
+| 任務 | 推薦模板 | 用途 |
+|------|---------|------|
+| PointsAccount | `templates/aggregate.go.template` | 聚合根完整結構 |
+| 建構函數 | `templates/aggregate.go.template` | New vs Reconstitute 模式 |
+| 事件管理 | `templates/aggregate.go.template` | addEvent, PullEvents, ClearEvents |
+| 測試 | `templates/aggregate.go.template` (底部) | 聚合根測試場景 |
 
 ---
 
@@ -2310,6 +2771,111 @@ go tool cover -func=coverage.out
 
 * 上午 (4h): DeductPoints + GetAvailablePoints
 * 下午 (4h): RecalculatePoints + ReconstructPointsAccount
+
+---
+
+#### ⚠️ 實作前置要求
+
+**開始任何代碼實作前，請先完成以下檢查**：
+
+- [ ] 已完成 Day 4 的 PointsAccount 基本實作
+- [ ] 已理解不變條件檢查機制（checkInvariants）
+- [ ] 已理解 Reconstitute 模式的用途（從數據庫重建）
+
+---
+
+#### 📚 必讀文檔
+
+| 文檔 | 章節 | 為什麼要讀 |
+|------|------|-----------|
+| `docs/implementation-checklist.md` | 不變條件檢查 | 確保每個修改方法都檢查不變條件 |
+| `docs/architecture/ddd/05-tactical-design.md` | 聚合根重建 | 理解 Reconstitute 與 New 的區別 |
+| `templates/aggregate.go.template` | Reconstitute 模式 | 從存儲層重建聚合的正確方式 |
+
+---
+
+#### ⚠️ 架構約束（本日重點）
+
+**Day 5 的關鍵約束**：
+
+1. **業務規則錯誤：帳戶餘額不足**
+   ```go
+   // ✅ DeductPoints 中的業務規則檢查
+   func (a *PointsAccount) DeductPoints(amount PointsAmount, reason string) error {
+       available := a.GetAvailablePoints()  // EarnedPoints - UsedPoints
+       if available.LessThan(amount) {
+           // 這是業務規則違反（不是建構約束）
+           return ErrInsufficientPoints.WithContext(
+               "available", available.Value(),
+               "requested", amount.Value(),
+               "reason", reason,
+           )
+       }
+       // ...
+   }
+   ```
+
+2. **Reconstitute vs New 的區別**
+   ```go
+   // ✅ New: 創建新的聚合（業務邏輯）
+   // - 執行完整驗證
+   // - 發布領域事件（PointsAccountCreated）
+   // - 初始化默認值
+   func NewPointsAccount(memberID MemberID) (*PointsAccount, error) {
+       // 驗證 + 事件發布
+   }
+
+   // ✅ Reconstitute: 從數據庫重建聚合（技術操作）
+   // - 不執行驗證（數據已驗證過）
+   // - 不發布事件（事件已發生過）
+   // - 直接設置所有字段
+   func ReconstitPointsAccount(
+       id AccountID,
+       memberID MemberID,
+       earnedPoints PointsAmount,
+       usedPoints PointsAmount,
+       version int,
+       createdAt time.Time,
+       updatedAt time.Time,
+   ) *PointsAccount {
+       // 不驗證，不發布事件
+   }
+   ```
+
+3. **RecalculatePoints 設計**
+   ```go
+   // ✅ RecalculatePoints: 根據交易記錄重新計算積分
+   // 使用場景：
+   // 1. 轉換規則變更後重新計算所有帳戶
+   // 2. 修復數據不一致問題
+   // 3. 遷移舊數據
+
+   // ⚠️ 注意：
+   // - 不發布 PointsEarned 事件（不是新增積分，是重新計算）
+   // - 發布 PointsRecalculated 事件（記錄重算操作）
+   // - 更新 version 和 updatedAt
+   ```
+
+4. **不變條件強制執行**
+   ```go
+   // ✅ 每個修改方法結束前必須調用
+   if err := a.checkInvariants(); err != nil {
+       panic(fmt.Sprintf("invariant violation in %s: %v",
+           "DeductPoints", err))
+   }
+
+   // ⚠️ panic 是正確的，因為不變條件違反表示代碼邏輯錯誤
+   ```
+
+---
+
+#### 💻 代碼模板引用
+
+| 任務 | 推薦模板 | 用途 |
+|------|---------|------|
+| DeductPoints | `templates/aggregate.go.template` | 業務方法模式 |
+| Reconstitute | `templates/aggregate.go.template` (line 79-101) | 重建聚合模式 |
+| 不變條件檢查 | `templates/aggregate.go.template` (line 174-186) | checkInvariants 實作 |
 
 ---
 
@@ -3160,6 +3726,122 @@ go tool cover -func=coverage.out
 
 * 上午 (4h): ConversionRule 聚合根結構 + 建構函數
 * 下午 (4h): 規則驗證邏輯 + PointsCalculationService
+
+---
+
+#### ⚠️ 實作前置要求
+
+**開始任何代碼實作前，請先完成以下檢查**：
+
+- [ ] 已完成 Day 1-5 的所有值對象和 PointsAccount 聚合根
+- [ ] 已閱讀 `docs/architecture/ddd/06-domain-services.md`（Domain Service 設計）
+- [ ] 已查看 `templates/aggregate.go.template`（ConversionRule 聚合根參考）
+- [ ] 理解「規則衝突檢測」的業務邏輯
+
+---
+
+#### 📚 必讀文檔
+
+| 文檔 | 章節 | 為什麼要讀 |
+|------|------|-----------|
+| `docs/architecture/ddd/06-domain-services.md` | 全文 | 理解 Domain Service 的定位和使用場景 |
+| `docs/architecture/ddd/05-tactical-design.md` | ConversionRule 聚合 | 理解規則聚合的邊界 |
+| `templates/aggregate.go.template` | 業務方法設計 | 規則激活/停用方法參考 |
+
+---
+
+#### ⚠️ 架構約束（本日重點）
+
+**Day 6 的關鍵約束**：
+
+1. **Domain Service 設計原則**
+   ```go
+   // ✅ PointsCalculationService 是無狀態的 Domain Service
+   // 職責：協調多個聚合/值對象完成業務邏輯
+
+   type PointsCalculationService struct {
+       // ❌ 不應該有狀態字段（如 cache, logger）
+       // ✅ 完全無狀態，所有數據通過參數傳入
+   }
+
+   // ✅ 方法簽名：所有依賴通過參數傳入
+   func (s *PointsCalculationService) CalculatePoints(
+       amount decimal.Decimal,
+       rule *ConversionRule,  // 不是 ConversionRate，是完整的規則聚合
+   ) (PointsAmount, error) {
+       // 業務邏輯封裝在這裡
+   }
+   ```
+
+2. **ConversionRule 聚合根設計**
+   ```go
+   // ✅ ConversionRule 聚合包含
+   type ConversionRule struct {
+       id           RuleID           // 聚合根 ID
+       name         string           // 規則名稱
+       rate         ConversionRate   // 值對象
+       validPeriod  DateRange        // 值對象
+       isActive     bool             // 狀態
+       priority     int              // 優先級（多規則衝突時使用）
+       createdAt    time.Time
+       updatedAt    time.Time
+       version      int
+       events       []DomainEvent
+   }
+
+   // ✅ 業務方法
+   func (r *ConversionRule) Activate() error    // 激活規則
+   func (r *ConversionRule) Deactivate() error  // 停用規則
+   func (r *ConversionRule) IsValidOn(date time.Time) bool  // 檢查日期有效性
+   ```
+
+3. **規則衝突檢測（在 Domain Service 中）**
+   ```go
+   // ⚠️ 規則衝突檢測不屬於單一聚合，應在 Domain Service 中
+   type ConversionRuleService struct {}
+
+   // ✅ 檢測規則衝突（跨聚合業務邏輯）
+   func (s *ConversionRuleService) DetectConflicts(
+       newRule *ConversionRule,
+       existingRules []*ConversionRule,
+   ) ([]RuleConflict, error) {
+       // 檢測日期範圍重疊 + 優先級衝突
+   }
+   ```
+
+4. **將 CalculatePoints 從值對象移到 Domain Service**
+   ```go
+   // ❌ Day 2 的過渡實作（違反 SRP）
+   func (r ConversionRate) CalculatePoints(amount decimal.Decimal) PointsAmount
+
+   // ✅ Day 6 重構到 Domain Service
+   func (s *PointsCalculationService) CalculatePoints(
+       amount decimal.Decimal,
+       rule *ConversionRule,
+   ) (PointsAmount, error) {
+       // 1. 驗證 amount > 0
+       // 2. 使用 rule.Rate() 計算
+       // 3. Floor division
+       // 4. 返回 PointsAmount
+   }
+
+   // 📝 TODO: Day 6 結束時，更新 Day 2 的 ConversionRate 移除 CalculatePoints
+   ```
+
+5. **領域事件**
+   - `ConversionRuleCreated`: 規則創建時
+   - `ConversionRuleActivated`: 規則激活時
+   - `ConversionRuleDeactivated`: 規則停用時
+
+---
+
+#### 💻 代碼模板引用
+
+| 任務 | 推薦模板 | 用途 |
+|------|---------|------|
+| ConversionRule | `templates/aggregate.go.template` | 聚合根結構 |
+| Domain Service | 無專用模板 | 參考 DDD 文檔 06-domain-services.md |
+| 規則驗證 | `templates/aggregate.go.template` | 業務方法模式 |
 
 ---
 
@@ -4196,6 +4878,134 @@ golangci-lint run ./internal/domain/points/...
 
 * 上午 (4h): Repository 介面定義（Reader/Writer/BatchReader 分離）
 * 下午 (4h): 完整的領域事件定義 + Week 1 總結
+
+---
+
+#### ⚠️ 實作前置要求
+
+**開始任何代碼實作前，請先完成以下檢查**：
+
+- [ ] 已完成 Day 1-6 的所有 Domain Layer 實作
+- [ ] 已閱讀 `docs/architecture/ddd/07-repository-pattern.md`（Repository 設計）
+- [ ] 已查看 `templates/repository.go.template`（Repository 接口參考）
+- [ ] 理解「接口定義在 Domain，實作在 Infrastructure」的依賴反轉原則
+
+---
+
+#### 📚 必讀文檔
+
+| 文檔 | 章節 | 為什麼要讀 |
+|------|------|-----------|
+| `docs/architecture/ddd/07-repository-pattern.md` | 全文 | 理解 Repository 的職責和接口設計 |
+| `docs/architecture/ddd/12-dependency-rules.md` | 依賴反轉 | 理解為何接口在 Domain，實作在 Infrastructure |
+| `templates/repository.go.template` | 全文 | Repository 接口完整範例 |
+
+---
+
+#### ⚠️ 架構約束（本日重點）
+
+**Day 7 的關鍵約束**：
+
+1. **接口隔離原則（ISP）**
+   ```go
+   // ✅ 分離 Reader 和 Writer 接口
+   type PointsAccountWriter interface {
+       Save(ctx TransactionContext, account *PointsAccount) error
+       // 不包含查詢方法
+   }
+
+   type PointsAccountReader interface {
+       FindByID(ctx TransactionContext, id AccountID) (*PointsAccount, error)
+       FindByMemberID(ctx TransactionContext, memberID MemberID) (*PointsAccount, error)
+       // 不包含寫入方法
+   }
+
+   // ✅ 組合接口（Use Case 按需依賴）
+   type PointsAccountRepository interface {
+       PointsAccountWriter
+       PointsAccountReader
+   }
+
+   // ❌ 錯誤：將所有方法放在單一接口
+   type PointsAccountRepository interface {
+       Save(...) error
+       FindByID(...) (...)
+       FindByMemberID(...) (...)
+       // 違反 ISP，強制依賴不需要的方法
+   }
+   ```
+
+2. **Repository 錯誤處理**
+   ```go
+   // ✅ Repository 返回 Domain 錯誤，不暴露 ORM 錯誤
+   func (r *GormPointsAccountRepository) FindByID(
+       ctx TransactionContext,
+       id AccountID,
+   ) (*PointsAccount, error) {
+       // ...
+       if errors.Is(err, gorm.ErrRecordNotFound) {
+           // 轉換為 Domain 錯誤
+           return nil, ErrAccountNotFound.WithContext("account_id", id.String())
+       }
+       // ...
+   }
+
+   // ❌ 錯誤：直接返回 gorm.ErrRecordNotFound
+   // 這會讓 Domain Layer 依賴 Infrastructure Layer
+   ```
+
+3. **TransactionContext 使用**
+   ```go
+   // ✅ 所有 Repository 方法接受 TransactionContext
+   type PointsAccountWriter interface {
+       Save(ctx shared.TransactionContext, account *PointsAccount) error
+   }
+
+   // ✅ Use Case 中使用 TransactionManager
+   func (uc *EarnPointsUseCase) Execute(memberID MemberID, amount PointsAmount) error {
+       return uc.txManager.InTransaction(func(ctx shared.TransactionContext) error {
+           account, err := uc.repo.FindByMemberID(ctx, memberID)
+           // ...
+           return uc.repo.Save(ctx, account)
+       })
+   }
+   ```
+
+4. **領域事件完整定義**
+   ```go
+   // ✅ 每個事件實現 DomainEvent 接口
+   type PointsAccountCreatedEvent struct {
+       eventID     string
+       occurredAt  time.Time
+       accountID   AccountID
+       memberID    MemberID
+   }
+
+   func (e PointsAccountCreatedEvent) EventID() string { return e.eventID }
+   func (e PointsAccountCreatedEvent) EventType() string { return "PointsAccountCreated" }
+   func (e PointsAccountCreatedEvent) OccurredAt() time.Time { return e.occurredAt }
+   func (e PointsAccountCreatedEvent) AggregateID() string { return e.accountID.String() }
+
+   // ✅ 事件命名為過去式（已發生的事實）
+   // ✅ 事件包含完整的上下文信息
+   ```
+
+5. **Week 1 重構清單**
+   - [ ] 實現 DomainError 結構（替換所有 errors.New）
+   - [ ] 將 ConversionRate.CalculatePoints 移到 PointsCalculationService
+   - [ ] 使用 Go 泛型重構 AccountID/MemberID 減少重複
+   - [ ] 為 PointsAmount.Add() 添加溢出保護
+   - [ ] 完善測試覆蓋率（目標 70%+）
+
+---
+
+#### 💻 代碼模板引用
+
+| 任務 | 推薦模板 | 用途 |
+|------|---------|------|
+| Repository | `templates/repository.go.template` | 完整 Repository 接口設計 |
+| 錯誤定義 | `templates/domain_error.go.template` | Repository 錯誤定義 |
+| 領域事件 | `internal/domain/shared/event.go` | 事件接口參考 |
 
 ---
 

@@ -1,0 +1,188 @@
+package repository
+
+import (
+	"github.com/yourorg/bar_crm/internal/domain/{{.Package}}"
+	"github.com/yourorg/bar_crm/internal/domain/shared"
+)
+
+// ===========================
+// {{.AggregateName}}Repository 接口
+// ===========================
+
+// {{.AggregateName}}Repository {{.AggregateName}} 聚合根的 Repository 接口
+// 設計原則：接口隔離（Interface Segregation Principle）
+//
+// 接口定義在 Domain Layer，實作在 Infrastructure Layer
+// 這樣可以：
+// 1. Domain Layer 不依賴 Infrastructure Layer
+// 2. 可以輕鬆替換實作（GORM → 其他 ORM）
+// 3. 測試時可以 Mock
+type {{.AggregateName}}Repository interface {
+	{{.AggregateName}}Writer
+	{{.AggregateName}}Reader
+}
+
+// ===========================
+// Writer 接口（寫操作）
+// ===========================
+
+// {{.AggregateName}}Writer 寫操作接口
+// 設計原則：CQRS（Command Query Responsibility Segregation）
+type {{.AggregateName}}Writer interface {
+	// Save 保存聚合根（新增或更新）
+	// 參數：
+	//   ctx - 事務上下文（由 TransactionManager 提供）
+	//   aggregate - 要保存的聚合根
+	// 返回：
+	//   error - 如果保存失敗（如樂觀鎖衝突）
+	//
+	// 職責：
+	// 1. 將 Domain Entity 轉換為 GORM Model
+	// 2. 保存到數據庫
+	// 3. 處理樂觀鎖衝突
+	// 4. 返回 Domain 錯誤（不暴露 GORM 錯誤）
+	Save(ctx shared.TransactionContext, aggregate *{{.Package}}.{{.AggregateName}}) error
+
+	// Delete 刪除聚合根
+	// 注意：根據業務需求，可能應該使用軟刪除而非硬刪除
+	// Delete(ctx shared.TransactionContext, id {{.Package}}.{{.AggregateName}}ID) error
+}
+
+// ===========================
+// Reader 接口（讀操作）
+// ===========================
+
+// {{.AggregateName}}Reader 讀操作接口
+type {{.AggregateName}}Reader interface {
+	// FindByID 根據 ID 查找聚合根
+	// 參數：
+	//   ctx - 事務上下文（可選，用於讀已提交）
+	//   id - 聚合根 ID
+	// 返回：
+	//   *{{.Package}}.{{.AggregateName}} - 找到的聚合根
+	//   error - 如果未找到或查詢失敗
+	//
+	// 錯誤處理：
+	// - 未找到：返回 Err{{.AggregateName}}NotFound
+	// - 數據庫錯誤：返回 ErrRepositoryFailure
+	FindByID(ctx shared.TransactionContext, id {{.Package}}.{{.AggregateName}}ID) (*{{.Package}}.{{.AggregateName}}, error)
+
+	// TODO: 根據業務需求添加其他查詢方法
+	// 示例：
+	// FindByMemberID(ctx shared.TransactionContext, memberID {{.Package}}.MemberID) (*{{.Package}}.{{.AggregateName}}, error)
+	// Exists(ctx shared.TransactionContext, id {{.Package}}.{{.AggregateName}}ID) (bool, error)
+}
+
+// ===========================
+// 批量讀取接口（可選）
+// ===========================
+
+// {{.AggregateName}}BatchReader 批量讀取接口
+// 僅在需要批量查詢時定義
+type {{.AggregateName}}BatchReader interface {
+	// FindByIDs 根據多個 ID 批量查找
+	// FindByIDs(ctx shared.TransactionContext, ids []{{.Package}}.{{.AggregateName}}ID) ([]*{{.Package}}.{{.AggregateName}}, error)
+
+	// TODO: 其他批量查詢方法
+}
+
+// ===========================
+// Repository 錯誤
+// ===========================
+
+// TODO: 在 errors.go 中定義 Repository 相關錯誤
+// 示例：
+// var (
+//     Err{{.AggregateName}}NotFound = &DomainError{
+//         Code:    ErrCode{{.AggregateName}}NotFound,
+//         Message: "{{.AggregateName}} 不存在",
+//     }
+//
+//     Err{{.AggregateName}}Conflict = &DomainError{
+//         Code:    ErrCode{{.AggregateName}}Conflict,
+//         Message: "{{.AggregateName}} 版本衝突（樂觀鎖）",
+//     }
+//
+//     ErrRepositoryFailure = &DomainError{
+//         Code:    ErrCodeRepositoryFailure,
+//         Message: "Repository 操作失敗",
+//     }
+// )
+
+// ===========================
+// 使用範例（Use Case 中）
+// ===========================
+
+// type SomeUseCase struct {
+//     repo {{.Package}}Repository
+//     txManager shared.TransactionManager
+// }
+//
+// func (uc *SomeUseCase) Execute(id {{.Package}}.{{.AggregateName}}ID) error {
+//     return uc.txManager.InTransaction(func(ctx shared.TransactionContext) error {
+//         // 1. 讀取聚合
+//         aggregate, err := uc.repo.FindByID(ctx, id)
+//         if err != nil {
+//             return err
+//         }
+//
+//         // 2. 調用業務方法
+//         if err := aggregate.DoSomething(); err != nil {
+//             return err
+//         }
+//
+//         // 3. 保存聚合
+//         if err := uc.repo.Save(ctx, aggregate); err != nil {
+//             return err
+//         }
+//
+//         return nil
+//     })
+// }
+
+// ===========================
+// 設計原則檢查清單
+// ===========================
+
+// ✅ 接口定義位置
+// - [ ] 接口定義在 Domain Layer (`domain/{{.Package}}/repository/`)
+// - [ ] 實作在 Infrastructure Layer (`infrastructure/persistence/{{.Package}}/`)
+
+// ✅ 接口隔離
+// - [ ] Reader 和 Writer 分離
+// - [ ] 批量操作獨立接口
+// - [ ] Use Case 只依賴需要的接口
+
+// ✅ 依賴方向
+// - [ ] 接口只依賴 Domain 實體
+// - [ ] 不依賴 GORM Model
+// - [ ] 不依賴 Infrastructure Layer
+
+// ✅ 錯誤處理
+// - [ ] 返回 Domain 錯誤
+// - [ ] 不暴露 ORM 錯誤（如 gorm.ErrRecordNotFound）
+// - [ ] 錯誤包含足夠上下文
+
+// ===========================
+// 測試指南
+// ===========================
+
+// Repository 接口的測試分為兩類：
+
+// 1. Unit Tests（使用 Mock）
+// 測試 Use Case 與 Repository 的交互
+// func TestUseCase_Execute_{{.AggregateName}}NotFound(t *testing.T) {
+//     mockRepo := new(Mock{{.AggregateName}}Repository)
+//     mockRepo.On("FindByID", mock.Anything, mock.Anything).
+//         Return(nil, Err{{.AggregateName}}NotFound)
+//     // ...
+// }
+
+// 2. Integration Tests（使用實際數據庫）
+// 測試 Repository 實作的正確性
+// func TestGorm{{.AggregateName}}Repository_Save_Success(t *testing.T) {
+//     // 使用 SQLite in-memory 數據庫
+//     db := setupTestDB(t)
+//     repo := NewGorm{{.AggregateName}}Repository(db)
+//     // ...
+// }
