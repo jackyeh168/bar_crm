@@ -199,3 +199,98 @@ func (e *PointsDeductedEvent) Amount() PointsAmount {
 func (e *PointsDeductedEvent) Reason() string {
 	return e.reason
 }
+
+// ===========================
+// PointsRecalculated 領域事件
+// ===========================
+
+// PointsRecalculatedEvent 積分已重算事件
+// 審計增強：包含完整的重算上下文信息
+type PointsRecalculatedEvent struct {
+	eventID        string
+	accountID      AccountID
+	oldPoints      int
+	newPoints      int
+	reason         string // 重算原因（如："rule_change"、"data_correction"、"migration"）
+	conversionRate int    // 使用的轉換率（TWD per point）
+	triggeredBy    string // 觸發者（管理員 ID，可選）
+	occurredAt     time.Time
+}
+
+// NewPointsRecalculatedEvent 創建積分已重算事件
+// 參數：
+//   - accountID: 帳戶 ID
+//   - oldPoints: 重算前積分
+//   - newPoints: 重算後積分
+//   - reason: 重算原因（業務上下文）
+//   - conversionRate: 使用的轉換率
+//   - triggeredBy: 觸發者 ID（可為空字串）
+func NewPointsRecalculatedEvent(
+	accountID AccountID,
+	oldPoints int,
+	newPoints int,
+	reason string,
+	conversionRate int,
+	triggeredBy string,
+) *PointsRecalculatedEvent {
+	return &PointsRecalculatedEvent{
+		eventID:        uuid.New().String(),
+		accountID:      accountID,
+		oldPoints:      oldPoints,
+		newPoints:      newPoints,
+		reason:         reason,
+		conversionRate: conversionRate,
+		triggeredBy:    triggeredBy,
+		occurredAt:     time.Now(),
+	}
+}
+
+// EventID 實現 DomainEvent 介面
+func (e *PointsRecalculatedEvent) EventID() string {
+	return e.eventID
+}
+
+// EventType 實現 DomainEvent 介面
+func (e *PointsRecalculatedEvent) EventType() string {
+	return "points.recalculated"
+}
+
+// OccurredAt 實現 DomainEvent 介面
+func (e *PointsRecalculatedEvent) OccurredAt() time.Time {
+	return e.occurredAt
+}
+
+// AggregateID 實現 DomainEvent 介面
+func (e *PointsRecalculatedEvent) AggregateID() string {
+	return e.accountID.String()
+}
+
+// AccountID 獲取帳戶 ID
+func (e *PointsRecalculatedEvent) AccountID() AccountID {
+	return e.accountID
+}
+
+// OldPoints 獲取舊積分值
+func (e *PointsRecalculatedEvent) OldPoints() int {
+	return e.oldPoints
+}
+
+// NewPoints 獲取新積分值
+func (e *PointsRecalculatedEvent) NewPoints() int {
+	return e.newPoints
+}
+
+// Reason 獲取重算原因
+func (e *PointsRecalculatedEvent) Reason() string {
+	return e.reason
+}
+
+// ConversionRate 獲取使用的轉換率
+func (e *PointsRecalculatedEvent) ConversionRate() int {
+	return e.conversionRate
+}
+
+// TriggeredBy 獲取觸發者 ID
+func (e *PointsRecalculatedEvent) TriggeredBy() string {
+	return e.triggeredBy
+}

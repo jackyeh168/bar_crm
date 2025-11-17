@@ -20,8 +20,9 @@ const (
 	ErrCodeInvalidConversionRate ErrorCode = "CONVERSION_RATE_INVALID"
 
 	// 帳戶相關
-	ErrCodeInvalidAccountID ErrorCode = "ACCOUNT_ID_INVALID"
-	ErrCodeInvalidMemberID  ErrorCode = "MEMBER_ID_INVALID"
+	ErrCodeInvalidAccountID   ErrorCode = "ACCOUNT_ID_INVALID"
+	ErrCodeInvalidMemberID    ErrorCode = "MEMBER_ID_INVALID"
+	ErrCodeInvariantViolation ErrorCode = "INVARIANT_VIOLATION"
 
 	// 日期範圍相關
 	ErrCodeInvalidDateRange ErrorCode = "DATE_RANGE_INVALID"
@@ -111,6 +112,11 @@ var (
 		Code:    ErrCodeInsufficientPoints,
 		Message: "積分餘額不足",
 	}
+
+	ErrInsufficientEarnedPoints = &DomainError{
+		Code:    ErrCodeInsufficientPoints,
+		Message: "重算後的累積積分不能小於已使用積分",
+	}
 )
 
 // 轉換率相關錯誤
@@ -131,6 +137,21 @@ var (
 	ErrInvalidMemberID = &DomainError{
 		Code:    ErrCodeInvalidMemberID,
 		Message: "無效的會員 ID",
+	}
+
+	ErrInvariantViolation = &DomainError{
+		Code:    ErrCodeInvariantViolation,
+		Message: "資料完整性違反（usedPoints 不能大於 earnedPoints）",
+	}
+
+	ErrCorruptedEarnedPoints = &DomainError{
+		Code:    ErrCodeInvalidPointsAmount,
+		Message: "資料庫中累積積分數據損壞",
+	}
+
+	ErrCorruptedUsedPoints = &DomainError{
+		Code:    ErrCodeInvalidPointsAmount,
+		Message: "資料庫中已使用積分數據損壞",
 	}
 )
 

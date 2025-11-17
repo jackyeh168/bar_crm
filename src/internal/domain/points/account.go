@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/jackyeh168/bar_crm/src/internal/domain/shared"
+	"github.com/shopspring/decimal"
 )
 
 // ===========================
@@ -295,6 +296,202 @@ func (a *PointsAccount) DeductPoints(
 	))
 
 	return nil
+}
+
+// ===========================
+// RecalculatePoints 命令方法
+// ===========================
+
+// PointsCalculableTransaction 可計算積分的交易介面
+//
+// 設計原則：
+// - 介面名稱表達用途（積分計算），而非資料結構
+// - Application Layer 的 DTO 實作此介面
+// - 避免 Domain Layer 依賴 Application Layer 的具體類型
+// - 介面隔離原則（ISP）：只包含必要方法，避免強迫實作不需要的方法
+//
+// 設計決策（ISP 優化）：
+// - 移除 GetOccurredAt()：當前 RecalculatePoints 不使用交易時間
+// - 遵循 YAGNI 原則：不為未來可能需求設計
+// - 若未來需要：可添加新介面或擴展現有介面
+type PointsCalculableTransaction interface {
+	GetAmount() int // 交易金額（TWD，整數，單位：元）
+}
+
+// calculateTotalPoints 計算交易列表的總積分（私有輔助方法）
+// 職責：純計算邏輯，不涉及狀態變更或驗證
+//
+// 設計原則（SRP）：
+// - 單一職責：只負責累加積分，不處理驗證或狀態變更
+// - 可測試性：可獨立測試計算邏輯
+// - 關注點分離：RecalculatePoints 負責編排，此方法負責計算
+func (a *PointsAccount) calculateTotalPoints(
+	transactions []PointsCalculableTransaction,
+	calculator *PointsCalculationService,
+	conversionRate ConversionRate,
+) (int, error) {
+	total := 0
+	for _, tx := range transactions {
+		amount := decimal.NewFromInt(int64(tx.GetAmount()))
+		points, err := calculator.CalculateFromAmount(amount, conversionRate)
+		if err != nil {
+			return 0, err
+		}
+		total += points.Value()
+	}
+	return total, nil
+}
+
+// RecalculatePoints 重算累積積分（管理員觸發）
+//
+// 使用場景：
+// 1. 轉換規則變更後重新計算所有帳戶
+// 2. 修復數據不一致問題
+// 3. 遷移舊數據
+//
+// 參數：
+//   transactions - 該會員的所有已驗證交易
+//   calculator - 積分計算服務（使用 *PointsCalculationService）
+//   conversionRate - 使用的轉換率
+//   reason - 重算原因（審計用途，如："rule_change"、"data_correction"、"migration"）
+//
+// 返回：
+//   error - 如果重算後違反不變條件（earned < used）
+//
+// 業務規則：
+// - 重算後的 earnedPoints 不能小於 usedPoints（不變條件）
+// - 不發布 PointsEarned 事件（不是新增積分）
+// - 發布 PointsRecalculated 事件（記錄重算操作，包含完整審計信息）
+//
+// 副作用：
+// - 更新 earnedPoints
+// - 更新 updatedAt
+// - 發布 PointsRecalculatedEvent（含 reason 和 conversionRate）
+func (a *PointsAccount) RecalculatePoints(
+	transactions []PointsCalculableTransaction,
+	calculator *PointsCalculationService,
+	conversionRate ConversionRate,
+	reason string,
+) error {
+	// 計算新的累積積分（委託給私有方法）
+	newEarnedTotal, err := a.calculateTotalPoints(transactions, calculator, conversionRate)
+	if err != nil {
+		return err
+	}
+
+	// 業務規則檢查：創建並驗證新積分數量
+	newEarnedPoints, err := NewPointsAmount(newEarnedTotal)
+	if err != nil {
+		return err
+	}
+
+	// 不變條件檢查：新的累積積分不能小於已使用積分
+	if newEarnedPoints.LessThan(a.usedPoints) {
+		return ErrInsufficientEarnedPoints.WithContext(
+			"newEarned", newEarnedPoints.Value(),
+			"used", a.usedPoints.Value(),
+		)
+	}
+
+	// 狀態變更
+	oldEarnedPoints := a.earnedPoints
+	a.earnedPoints = newEarnedPoints
+	a.updatedAt = time.Now()
+
+	// 發布事件（含審計信息）
+	a.addEvent(NewPointsRecalculatedEvent(
+		a.accountID,
+		oldEarnedPoints.Value(),
+		newEarnedPoints.Value(),
+		reason,                 // 重算原因
+		conversionRate.Value(), // 使用的轉換率
+		"",                     // triggeredBy 由 Application Layer 提供（未來實作）
+	))
+
+	return nil
+}
+
+// ===========================
+// 聚合重建方法（僅供 Infrastructure Layer 使用）
+// ===========================
+
+// ReconstructPointsAccount 從持久化存儲重建聚合根
+//
+// 設計原則：
+// - 僅供 Repository 使用，不對外暴露
+// - 與 NewPointsAccount 的區別：
+//   * New: 創建新聚合，執行完整驗證，發布 AccountCreated 事件
+//   * Reconstruct: 重建已存在的聚合，不發布事件（事件已發生過）
+//
+// 參數：
+//   accountID - 帳戶 ID（從資料庫讀取）
+//   memberID - 會員 ID（從資料庫讀取）
+//   earnedPoints - 累積獲得積分（原始 int 值）
+//   usedPoints - 累積使用積分（原始 int 值）
+//   createdAt - 創建時間
+//   updatedAt - 最後更新時間
+//
+// 返回：
+//   *PointsAccount - 重建的聚合根
+//   error - 如果資料驗證失敗（資料損壞）
+//
+// 重要：即使是從資料庫重建，也必須驗證不變條件，防止損壞資料污染領域層
+func ReconstructPointsAccount(
+	accountID AccountID,
+	memberID MemberID,
+	earnedPoints int,
+	usedPoints int,
+	createdAt time.Time,
+	updatedAt time.Time,
+) (*PointsAccount, error) {
+	// 1. 驗證 ID 有效性
+	if accountID.IsEmpty() {
+		return nil, ErrInvalidAccountID.WithContext(
+			"reason", "invalid account ID in database",
+		)
+	}
+
+	if memberID.IsEmpty() {
+		return nil, ErrInvalidMemberID.WithContext(
+			"reason", "invalid member ID in database",
+		)
+	}
+
+	// 2. 驗證積分數量（防止負數）
+	earnedAmount, err := NewPointsAmount(earnedPoints)
+	if err != nil {
+		return nil, ErrCorruptedEarnedPoints.WithContext(
+			"value", earnedPoints,
+			"underlying_error", err.Error(),
+		)
+	}
+
+	usedAmount, err := NewPointsAmount(usedPoints)
+	if err != nil {
+		return nil, ErrCorruptedUsedPoints.WithContext(
+			"value", usedPoints,
+			"underlying_error", err.Error(),
+		)
+	}
+
+	// 3. 驗證關鍵不變條件：usedPoints <= earnedPoints
+	if usedAmount.GreaterThan(earnedAmount) {
+		return nil, ErrInvariantViolation.WithContext(
+			"usedPoints", usedPoints,
+			"earnedPoints", earnedPoints,
+		)
+	}
+
+	// 4. 重建聚合（使用已驗證的值對象）
+	return &PointsAccount{
+		accountID:    accountID,
+		memberID:     memberID,
+		earnedPoints: earnedAmount,
+		usedPoints:   usedAmount,
+		createdAt:    createdAt,
+		updatedAt:    updatedAt,
+		events:       make([]shared.DomainEvent, 0), // 重建時不包含事件
+	}, nil
 }
 
 // ===========================
