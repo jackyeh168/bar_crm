@@ -37,9 +37,6 @@ type PointsAccount struct {
 	createdAt time.Time
 	updatedAt time.Time
 
-	// 樂觀鎖版本號（用於並發控制）
-	version int
-
 	// 待發布的領域事件
 	events []shared.DomainEvent
 }
@@ -79,7 +76,6 @@ func NewPointsAccount(memberID MemberID) (*PointsAccount, error) {
 		usedPoints:   newPointsAmountUnchecked(0),
 		createdAt:    now,
 		updatedAt:    now,
-		version:      1,
 		events:       make([]shared.DomainEvent, 0),
 	}
 
@@ -133,9 +129,25 @@ func (a *PointsAccount) UpdatedAt() time.Time {
 	return a.updatedAt
 }
 
-// Version 獲取版本號
-func (a *PointsAccount) Version() int {
-	return a.version
+// GetAvailablePoints 獲取可用積分（派生值）
+//
+// 業務規則：
+// - AvailablePoints = EarnedPoints - UsedPoints
+// - 此為派生值，不存儲在數據庫
+//
+// 不變條件保證：
+// - 由於 usedPoints <= earnedPoints 不變條件，結果永遠 >= 0
+// - 每次調用都重新計算，確保與當前狀態一致
+//
+// 使用場景：
+// - 在 DeductPoints 前檢查是否有足夠積分
+// - Application Layer 查詢可用積分餘額（用於 DTO 響應）
+// - 不應用於外部判斷（Tell, Don't Ask 原則）
+func (a *PointsAccount) GetAvailablePoints() PointsAmount {
+	// 不變條件保證 earnedPoints >= usedPoints
+	// 因此 Subtract() 永遠不會返回錯誤，可以安全忽略
+	available, _ := a.earnedPoints.Subtract(a.usedPoints)
+	return available
 }
 
 // ===========================
@@ -210,7 +222,6 @@ func (a *PointsAccount) EarnPoints(
 
 	a.earnedPoints = newEarnedPoints
 	a.updatedAt = time.Now()
-	a.version++
 
 	// 發布領域事件
 	// 事件將在 Repository.Save() 成功後通過 PullEvents() 獲取並發布
@@ -221,6 +232,66 @@ func (a *PointsAccount) EarnPoints(
 		source,
 		sourceID,
 		description,
+	))
+
+	return nil
+}
+
+// DeductPoints 扣減積分（核心業務邏輯）
+//
+// 參數：
+//   amount - 扣減的積分數量（PointsAmount 已保證 >= 0）
+//   reason - 扣減原因（如「兌換商品」、「過期清除」）
+//
+// 返回：
+//   error - 如果餘額不足或發生溢位錯誤
+//
+// 前置條件（由類型系統保證）：
+// - amount 已通過 NewPointsAmount 驗證，保證 >= 0
+//
+// 業務規則：
+// - 必須先檢查可用積分是否足夠（前置條件）
+// - 零積分也接受（業務上可能存在測試場景）
+//
+// 副作用：
+// - 更新 usedPoints（累加）
+// - 更新 updatedAt
+// - 增加版本號
+// - 發布 PointsDeductedEvent
+//
+// 不變條件維護：
+// - 前置條件檢查確保扣減後 usedPoints <= earnedPoints
+func (a *PointsAccount) DeductPoints(
+	amount PointsAmount,
+	reason string,
+) error {
+	// 前置條件：檢查是否有足夠積分
+	available := a.GetAvailablePoints()
+	if amount.GreaterThan(available) {
+		return ErrInsufficientPoints.WithContext(
+			"requested", amount.Value(),
+			"available", available.Value(),
+			"reason", reason,
+		)
+	}
+
+	// 狀態變更
+	// PointsAmount.Add() 會檢測整數溢位並返回錯誤
+	newUsedPoints, err := a.usedPoints.Add(amount)
+	if err != nil {
+		// 溢位錯誤：這應該極少發生（需要累積數十億積分）
+		return err
+	}
+
+	a.usedPoints = newUsedPoints
+	a.updatedAt = time.Now()
+
+	// 發布領域事件
+	// 事件將在 Repository.Save() 成功後通過 PullEvents() 獲取並發布
+	a.addEvent(NewPointsDeductedEvent(
+		a.accountID,
+		amount,
+		reason,
 	))
 
 	return nil

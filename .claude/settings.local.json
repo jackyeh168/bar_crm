@@ -9,7 +9,8 @@
       "Bash(go build:*)",
       "Bash(go test:*)",
       "Bash(tee:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(go tool cover:*)"
     ],
     "deny": [],
     "ask": []

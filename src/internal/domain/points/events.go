@@ -136,3 +136,66 @@ func (e *PointsEarnedEvent) SourceID() string {
 func (e *PointsEarnedEvent) Description() string {
 	return e.description
 }
+
+// ===========================
+// PointsDeducted 領域事件
+// ===========================
+
+// PointsDeductedEvent 積分已扣減事件
+type PointsDeductedEvent struct {
+	eventID    string
+	accountID  AccountID
+	amount     PointsAmount
+	reason     string
+	occurredAt time.Time
+}
+
+// NewPointsDeductedEvent 創建積分已扣減事件
+func NewPointsDeductedEvent(
+	accountID AccountID,
+	amount PointsAmount,
+	reason string,
+) *PointsDeductedEvent {
+	return &PointsDeductedEvent{
+		eventID:    uuid.New().String(),
+		accountID:  accountID,
+		amount:     amount,
+		reason:     reason,
+		occurredAt: time.Now(),
+	}
+}
+
+// EventID 實現 DomainEvent 介面
+func (e *PointsDeductedEvent) EventID() string {
+	return e.eventID
+}
+
+// EventType 實現 DomainEvent 介面
+func (e *PointsDeductedEvent) EventType() string {
+	return "points.deducted"
+}
+
+// OccurredAt 實現 DomainEvent 介面
+func (e *PointsDeductedEvent) OccurredAt() time.Time {
+	return e.occurredAt
+}
+
+// AggregateID 實現 DomainEvent 介面
+func (e *PointsDeductedEvent) AggregateID() string {
+	return e.accountID.String()
+}
+
+// AccountID 獲取帳戶 ID
+func (e *PointsDeductedEvent) AccountID() AccountID {
+	return e.accountID
+}
+
+// Amount 獲取積分數量
+func (e *PointsDeductedEvent) Amount() PointsAmount {
+	return e.amount
+}
+
+// Reason 獲取扣減原因
+func (e *PointsDeductedEvent) Reason() string {
+	return e.reason
+}
