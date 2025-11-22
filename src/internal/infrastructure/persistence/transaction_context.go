@@ -33,3 +33,70 @@ func NewGORMTransactionContext(db *gorm.DB) shared.TransactionContext {
 func (ctx *gormTransactionContext) GetDB() *gorm.DB {
 	return ctx.db
 }
+
+// ===========================
+// GORM TransactionManager 實作
+// ===========================
+
+// gormTransactionManager GORM 事務管理器實作
+// 設計原則：
+// 1. 實作 shared.TransactionManager 介面
+// 2. 提供事務管理能力（Begin, Commit, Rollback）
+// 3. 自動處理 panic 和錯誤回滾
+type gormTransactionManager struct {
+	db *gorm.DB
+}
+
+// NewGORMTransactionManager 創建 GORM 事務管理器
+// 參數：
+// - db: GORM 資料庫連接
+// 返回：
+// - shared.TransactionManager: 事務管理器介面
+func NewGORMTransactionManager(db *gorm.DB) shared.TransactionManager {
+	return &gormTransactionManager{db: db}
+}
+
+// InTransaction 在事務中執行函數
+// 設計原則：
+// 1. 自動開啟事務（Begin）
+// 2. 函數返回 nil → Commit
+// 3. 函數返回 error → Rollback
+// 4. 函數 panic → Rollback + re-panic
+//
+// 使用範例：
+//   err := txManager.InTransaction(func(ctx shared.TransactionContext) error {
+//       account, _ := repo.FindByID(ctx, accountID)
+//       account.EarnPoints(amount, source, sourceID, description)
+//       return repo.Update(ctx, account)
+//   })
+func (tm *gormTransactionManager) InTransaction(fn func(ctx shared.TransactionContext) error) error {
+	// 1. 開啟事務
+	tx := tm.db.Begin()
+	if tx.Error != nil {
+		return tx.Error
+	}
+
+	// 2. 創建事務上下文
+	ctx := NewGORMTransactionContext(tx)
+
+	// 3. 使用 defer 處理 panic 和回滾
+	defer func() {
+		if r := recover(); r != nil {
+			// Panic 發生，回滾事務
+			tx.Rollback()
+			// 重新 panic，讓上層處理
+			panic(r)
+		}
+	}()
+
+	// 4. 執行函數
+	err := fn(ctx)
+	if err != nil {
+		// 函數返回錯誤，回滾事務
+		tx.Rollback()
+		return err
+	}
+
+	// 5. 提交事務
+	return tx.Commit().Error
+}
