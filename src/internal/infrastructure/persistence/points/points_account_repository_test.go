@@ -233,7 +233,22 @@ func TestPointsAccountRepository_Update_WithDeductedPoints_Success(t *testing.T)
 	assert.Equal(t, 70, found.GetAvailablePoints().Value(), "available = earned - used")
 }
 
-// Test 10: Mapper round-trip (Domain → GORM → Domain)
+// Test 10: Update non-existent account returns error
+func TestPointsAccountRepository_Update_NonExistentAccount_ReturnsError(t *testing.T) {
+	// Arrange
+	db := setupTestDB(t)
+	repo := NewPointsAccountRepository(db)
+	account := createTestAccount(t)
+
+	// Act - Update without Save (account doesn't exist in DB)
+	err := repo.Update(nil, account)
+
+	// Assert
+	assert.Error(t, err)
+	assert.ErrorIs(t, err, points.ErrAccountNotFound)
+}
+
+// Test 11: Mapper round-trip (Domain → GORM → Domain)
 func TestPointsAccountRepository_MapperRoundTrip_PreservesData(t *testing.T) {
 	// Arrange
 	db := setupTestDB(t)
@@ -257,7 +272,7 @@ func TestPointsAccountRepository_MapperRoundTrip_PreservesData(t *testing.T) {
 	assert.Equal(t, original.GetAvailablePoints().Value(), retrieved.GetAvailablePoints().Value())
 }
 
-// Test 11: Zero points can be stored and retrieved correctly
+// Test 12: Zero points can be stored and retrieved correctly
 func TestPointsAccountRepository_ZeroPoints_CorrectlyHandled(t *testing.T) {
 	// Arrange
 	db := setupTestDB(t)
@@ -277,7 +292,7 @@ func TestPointsAccountRepository_ZeroPoints_CorrectlyHandled(t *testing.T) {
 	assert.True(t, found.GetAvailablePoints().IsZero(), "available points should be zero")
 }
 
-// Test 12: Timestamps are preserved
+// Test 13: Timestamps are preserved
 func TestPointsAccountRepository_Timestamps_PreservedCorrectly(t *testing.T) {
 	// Arrange
 	db := setupTestDB(t)
