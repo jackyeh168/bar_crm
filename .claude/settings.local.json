@@ -10,7 +10,9 @@
       "Bash(go test:*)",
       "Bash(tee:*)",
       "Bash(git add:*)",
-      "Bash(go tool cover:*)"
+      "Bash(go tool cover:*)",
+      "Bash(git commit:*)",
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": []

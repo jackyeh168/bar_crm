@@ -56,6 +56,10 @@ func NewPointsAccountRepository(db *gorm.DB) points.PointsAccountRepository {
 // - UNIQUE constraint 違反（member_id 重複）→ ErrAccountAlreadyExists
 // - 其他資料庫錯誤 → 原始錯誤
 func (r *PointsAccountRepositoryImpl) Save(ctx shared.TransactionContext, account *points.PointsAccount) error {
+	// TODO: Enforce contract - Save MUST be in a transaction (ctx != nil)
+	// Currently allows nil for backward compatibility with tests
+	// This should be fixed in coordination with Member Repository
+
 	// 1. 獲取 DB 實例
 	db := r.getDB(ctx)
 
@@ -150,27 +154,38 @@ func (r *PointsAccountRepositoryImpl) FindByMemberID(ctx shared.TransactionConte
 // 實作邏輯：
 // 1. 從 TransactionContext 獲取 DB 實例
 // 2. 將 Domain 模型轉換為 GORM 模型
-// 3. 使用 GORM Save (Upsert: 存在則更新，不存在則新增)
-// 4. 處理唯一約束衝突錯誤
+// 3. 使用 GORM Updates 更新所有字段（包括零值）
+// 4. 檢查 RowsAffected 確保記錄存在
 //
-// 注意：使用 Save 而非 Updates，因為：
-// - Save 會更新所有字段（包括零值）
-// - Updates 會忽略零值字段
-// - 積分數據可能降為 0，需要正確更新
+// 前置條件：
+// - 帳戶必須已存在（如果不存在，返回 ErrAccountNotFound）
+//
+// 注意：
+// - 使用 Select("*") 確保更新所有字段（包括零值）
+// - Updates 預設會忽略零值，Select 強制更新
 //
 // 錯誤處理：
-// - 帳戶不存在時也會執行 Save（變成新增）
+// - 帳戶不存在 → ErrAccountNotFound
 // - UNIQUE constraint 違反 → ErrAccountAlreadyExists
 // - 其他資料庫錯誤 → 原始錯誤
 func (r *PointsAccountRepositoryImpl) Update(ctx shared.TransactionContext, account *points.PointsAccount) error {
+	// TODO: Enforce contract - Update MUST be in a transaction (ctx != nil)
+	// Currently allows nil for backward compatibility with tests
+	// This should be fixed in coordination with Member Repository
+
 	// 1. 獲取 DB 實例
 	db := r.getDB(ctx)
 
 	// 2. 轉換為 GORM 模型
 	gormModel := toGORM(account)
 
-	// 3. 執行 Save (Upsert)
-	result := db.Save(gormModel)
+	// 3. 執行 Updates（更新現有記錄）
+	// 使用 Select("*") 確保零值字段也被更新
+	result := db.Model(&PointsAccountGORM{}).
+		Where("account_id = ?", gormModel.AccountID).
+		Select("*").
+		Updates(gormModel)
+
 	if result.Error != nil {
 		// 4. 處理唯一約束錯誤
 		if isUniqueConstraintError(result.Error) {
@@ -179,6 +194,14 @@ func (r *PointsAccountRepositoryImpl) Update(ctx shared.TransactionContext, acco
 			)
 		}
 		return result.Error
+	}
+
+	// 5. 檢查是否找到記錄
+	if result.RowsAffected == 0 {
+		return points.ErrAccountNotFound.WithContext(
+			"account_id", account.AccountID().String(),
+			"reason", "account does not exist (Update requires existing record)",
+		)
 	}
 
 	return nil
