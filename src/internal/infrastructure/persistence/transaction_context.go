@@ -1,6 +1,9 @@
 package persistence
 
 import (
+	"fmt"
+	"log"
+
 	"github.com/jackyeh168/bar_crm/src/internal/domain/shared"
 	"gorm.io/gorm"
 )
@@ -83,7 +86,11 @@ func (tm *gormTransactionManager) InTransaction(fn func(ctx shared.TransactionCo
 	defer func() {
 		if r := recover(); r != nil {
 			// Panic 發生，回滾事務
-			tx.Rollback()
+			if rbErr := tx.Rollback().Error; rbErr != nil {
+				// 記錄回滾失敗（但仍然 panic 原始錯誤）
+				// 注意：這種情況很罕見，通常表示資料庫連接問題
+				log.Printf("[CRITICAL] Failed to rollback transaction after panic: %v (original panic: %v)", rbErr, r)
+			}
 			// 重新 panic，讓上層處理
 			panic(r)
 		}
@@ -93,7 +100,11 @@ func (tm *gormTransactionManager) InTransaction(fn func(ctx shared.TransactionCo
 	err := fn(ctx)
 	if err != nil {
 		// 函數返回錯誤，回滾事務
-		tx.Rollback()
+		if rbErr := tx.Rollback().Error; rbErr != nil {
+			// 記錄回滾失敗，並返回組合錯誤
+			log.Printf("[ERROR] Failed to rollback transaction: %v (original error: %v)", rbErr, err)
+			return fmt.Errorf("transaction rollback failed: %w (original error: %v)", rbErr, err)
+		}
 		return err
 	}
 

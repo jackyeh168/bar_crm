@@ -26,21 +26,45 @@ import "github.com/jackyeh168/bar_crm/src/internal/domain/shared"
 //   })
 type PointsAccountRepository interface {
 	// Save 保存新的積分帳戶
+	//
+	// 參數：
+	// - ctx: 事務上下文（必須在事務中，不可為 nil）
+	// - account: 要保存的帳戶聚合
+	//
 	// 前置條件：帳戶不存在（MemberID 唯一）
 	// 後置條件：帳戶已持久化
 	// 錯誤：ErrAccountAlreadyExists（如果 MemberID 已存在）
 	Save(ctx shared.TransactionContext, account *PointsAccount) error
 
 	// FindByID 根據帳戶 ID 查找積分帳戶
+	//
+	// 參數：
+	// - ctx: 事務上下文（可為 nil，使用 auto-commit 模式）
+	//   - nil: 獨立查詢，性能優先
+	//   - non-nil: 在調用者事務中查詢，一致性優先
+	// - accountID: 帳戶 ID
+	//
 	// 返回：找到的帳戶，或 ErrAccountNotFound
 	FindByID(ctx shared.TransactionContext, accountID AccountID) (*PointsAccount, error)
 
 	// FindByMemberID 根據會員 ID 查找積分帳戶
+	//
+	// 參數：
+	// - ctx: 事務上下文（可為 nil，使用 auto-commit 模式）
+	//   - nil: 獨立查詢，性能優先
+	//   - non-nil: 在調用者事務中查詢，一致性優先
+	// - memberID: 會員 ID
+	//
 	// 業務規則：一個會員對應一個積分帳戶（1:1 關係）
 	// 返回：找到的帳戶，或 ErrAccountNotFound
 	FindByMemberID(ctx shared.TransactionContext, memberID MemberID) (*PointsAccount, error)
 
 	// Update 更新積分帳戶
+	//
+	// 參數：
+	// - ctx: 事務上下文（必須在事務中，不可為 nil）
+	// - account: 要更新的帳戶聚合
+	//
 	// 前置條件：帳戶已存在
 	// 後置條件：帳戶狀態已更新
 	// 錯誤：ErrAccountNotFound（如果帳戶不存在）
